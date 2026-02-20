@@ -18,6 +18,7 @@ import logging
 import time
 import zipfile
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
@@ -28,6 +29,23 @@ CACHE_MAX_AGE_SECONDS = 3600  # 1 hour
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TEMP_DIR = PROJECT_ROOT / "temp"
+
+
+@dataclass
+class DownloadResult:
+    """Result of a download operation."""
+
+    path: Path
+    cached: bool
+    size_bytes: int
+
+
+@dataclass
+class ExtractResult:
+    """Result of a ZIP extraction operation."""
+
+    path: Path
+    file_count: int
 
 
 def _is_cached(file_path: Path) -> bool:
@@ -42,7 +60,7 @@ def download(
     url: str,
     filename: str,
     progress_callback: Callable[[int, int | None], None] | None = None,
-) -> Path:
+) -> DownloadResult:
     """Download a file to the temp directory, using cache if fresh.
 
     Args:
@@ -52,7 +70,7 @@ def download(
             after each chunk.
 
     Returns:
-        Path to the downloaded (or cached) file.
+        DownloadResult with path, cache status, and file size.
 
     Raises:
         httpx.HTTPStatusError: When the server returns a non-2xx response.
@@ -61,10 +79,10 @@ def download(
     dest = TEMP_DIR / filename
 
     if _is_cached(dest):
-        logger.info("Using cached file: %s", dest)
-        return dest
+        logger.debug("Using cached file: %s", dest)
+        return DownloadResult(path=dest, cached=True, size_bytes=dest.stat().st_size)
 
-    logger.info("Downloading %s", url)
+    logger.debug("Downloading %s", url)
 
     with httpx.stream("GET", url, follow_redirects=True) as response:
         response.raise_for_status()
@@ -79,11 +97,11 @@ def download(
                 if progress_callback:
                     progress_callback(downloaded, total_bytes)
 
-    logger.info("Downloaded %s (%d bytes)", filename, downloaded)
-    return dest
+    logger.debug("Downloaded %s (%d bytes)", filename, downloaded)
+    return DownloadResult(path=dest, cached=False, size_bytes=downloaded)
 
 
-def extract_zip(zip_path: Path, dest_dir: Path | None = None) -> Path:
+def extract_zip(zip_path: Path, dest_dir: Path | None = None) -> ExtractResult:
     """Extract a ZIP archive to a directory.
 
     Args:
@@ -92,15 +110,17 @@ def extract_zip(zip_path: Path, dest_dir: Path | None = None) -> Path:
             named after the archive stem.
 
     Returns:
-        Path to the extraction directory.
+        ExtractResult with path and file count.
     """
     if dest_dir is None:
         dest_dir = zip_path.parent / zip_path.stem
 
-    logger.info("Extracting %s to %s", zip_path, dest_dir)
+    logger.debug("Extracting %s to %s", zip_path, dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     with zipfile.ZipFile(zip_path, "r") as zf:
+        file_count = len(zf.namelist())
         zf.extractall(dest_dir)
 
-    return dest_dir
+    logger.debug("Extracted %d files to %s", file_count, dest_dir)
+    return ExtractResult(path=dest_dir, file_count=file_count)

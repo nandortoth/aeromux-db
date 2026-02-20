@@ -58,7 +58,7 @@ def build_database(
     if output_path.exists():
         output_path.unlink()
 
-    logger.info("Creating database at %s", output_path)
+    logger.debug("Creating database at %s", output_path)
 
     conn = sqlite3.connect(str(output_path))
     try:
@@ -67,13 +67,13 @@ def build_database(
         schema_sql = SCHEMA_PATH.read_text()
         conn.executescript(schema_sql)
 
-        logger.info("Inserting %d types", len(types))
+        logger.debug("Inserting %d types", len(types))
         conn.executemany(
             "INSERT INTO types (type_code, type_description, type_icao_class) VALUES (?, ?, ?)",
             [(t.type_code, t.type_description, t.type_icao_class) for t in types],
         )
 
-        logger.info("Inserting %d operators", len(operators))
+        logger.debug("Inserting %d operators", len(operators))
         conn.executemany(
             "INSERT INTO operators (operator_icao, operator_name, operator_country, operator_callsign) VALUES (?, ?, ?, ?)",
             [
@@ -82,12 +82,13 @@ def build_database(
             ],
         )
 
-        logger.info("Inserting %d aircraft", len(aircraft))
+        logger.debug("Inserting %d aircraft", len(aircraft))
         conn.executemany(
             "INSERT INTO aircraft (icao_address, registration, type_code) VALUES (?, ?, ?)",
             [(a.icao_address, a.registration, a.type_code) for a in aircraft],
         )
 
+        logger.debug("Writing metadata")
         build_timestamp = datetime.now(timezone.utc).isoformat()
         metadata = [
             ("build_timestamp", build_timestamp),
@@ -104,5 +105,5 @@ def build_database(
     finally:
         conn.close()
 
-    logger.info("Database built successfully: %s", output_path)
+    logger.debug("Database built successfully: %s", output_path)
     return output_path

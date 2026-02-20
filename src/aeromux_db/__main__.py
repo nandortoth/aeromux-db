@@ -17,6 +17,7 @@
 import logging
 import os
 import sys
+import time
 
 from aeromux_db import __version__
 from aeromux_db.builder import build_database
@@ -53,31 +54,47 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         stream=sys.stderr,
     )
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
-    logger.info("Aeromux Database Builder v%s", __version__)
+    logger.debug("Aeromux Database Builder v%s", __version__)
+    start_time = time.monotonic()
 
     try:
         # Step 1: Download
-        logger.info("Downloading Mictronics database...")
-        zip_path = download(SOURCE_URL, SOURCE_FILENAME)
+        logger.info("[1/4] Downloading Mictronics database...")
+        result = download(SOURCE_URL, SOURCE_FILENAME)
+        file_size_str = _format_file_size(result.size_bytes)
+        if result.cached:
+            logger.info("Using cached file (%s)", file_size_str)
+        else:
+            logger.info("Downloaded %s", file_size_str)
 
         # Step 2: Extract
-        logger.info("Extracting archive...")
-        data_dir = extract_zip(zip_path)
+        logger.info("[2/4] Extracting archive...")
+        extract = extract_zip(result.path)
+        logger.info("Extracted %d files", extract.file_count)
 
         # Step 3: Parse
-        logger.info("Parsing data sources...")
-        types = parse_types(data_dir)
-        operators = parse_operators(data_dir)
-        aircraft = parse_aircraft(data_dir)
+        logger.info("[3/4] Parsing data sources...")
+        logger.info("Parsing types...")
+        types = parse_types(extract.path)
+        logger.info("Parsed %s types", f"{len(types):,}")
+        logger.info("Parsing operators...")
+        operators = parse_operators(extract.path)
+        logger.info("Parsed %s operators", f"{len(operators):,}")
+        logger.info("Parsing aircraft...")
+        aircraft = parse_aircraft(extract.path)
+        logger.info("Parsed %s aircraft", f"{len(aircraft):,}")
 
         # Step 4: Build database
-        logger.info("Building database...")
+        logger.info("[4/4] Building database...")
         output_path = build_database(aircraft, types, operators)
 
         # Summary
-        logger.info("Build complete!")
-        logger.info(
+        elapsed = time.monotonic() - start_time
+        logger.info("Build complete! (%.1fs)", elapsed)
+        logger.debug(
             "Output: %s | Aircraft: %s | Types: %s | Operators: %s",
             output_path,
             f"{len(aircraft):,}",
@@ -86,12 +103,12 @@ def main() -> None:
         )
 
         # Print structured summary to stdout for shell integration
-        file_size = _format_file_size(os.path.getsize(output_path))
+        output_file_size = _format_file_size(os.path.getsize(output_path))
         print(f"OUTPUT_FILE={output_path}")
         print(f"AIRCRAFT_COUNT={len(aircraft):,}")
         print(f"TYPES_COUNT={len(types):,}")
         print(f"OPERATORS_COUNT={len(operators):,}")
-        print(f"FILE_SIZE={file_size}")
+        print(f"FILE_SIZE={output_file_size}")
     except Exception:
         logger.exception("Build failed")
         sys.exit(1)

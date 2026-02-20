@@ -49,7 +49,7 @@ def parse_types(data_dir: Path) -> list[AircraftType]:
                 type_icao_class=values[1] if len(values) > 1 else None,
             )
         )
-    logger.info("Parsed %d types from Mictronics", len(types))
+    logger.debug("Parsed %d types from Mictronics", len(types))
     return types
 
 
@@ -77,7 +77,7 @@ def parse_operators(data_dir: Path) -> list[Operator]:
                 operator_callsign=values[2] if len(values) > 2 else None,
             )
         )
-    logger.info("Parsed %d operators from Mictronics", len(operators))
+    logger.debug("Parsed %d operators from Mictronics", len(operators))
     return operators
 
 
@@ -105,5 +105,5 @@ def parse_aircraft(data_dir: Path) -> list[Aircraft]:
                 type_code=values[1] if len(values) > 1 and values[1] else None,
             )
         )
-    logger.info("Parsed %d aircraft from Mictronics", len(aircraft))
+    logger.debug("Parsed %d aircraft from Mictronics", len(aircraft))
     return aircraft

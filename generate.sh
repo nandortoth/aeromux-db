@@ -60,6 +60,8 @@ log() { [ "$SILENT" = true ] || echo "$@"; }
 # Clear screen (suppressed in silent mode)
 [ "$SILENT" = true ] || clear
 
+START_TIME=$SECONDS
+
 log "================================================"
 log "Aeromux Database Builder — Generate Script"
 log "================================================"
@@ -103,12 +105,39 @@ log ""
 # Step 3: Generate database
 CURRENT_STEP="Generate database"
 log "Generating database..."
-GENERATE_OUTPUT=$(uv run --directory "$PROJECT_ROOT" aeromux-db 2>&1) || {
+
+SUMMARY_FILE=$(mktemp)
+STDERR_FILE=$(mktemp)
+STDERR_FIFO=$(mktemp -u)
+mkfifo "$STDERR_FIFO"
+trap "rm -f '$SUMMARY_FILE' '$STDERR_FILE' '$STDERR_FIFO'" EXIT
+
+# Background reader: display stderr log lines as indented progress in real time
+(while IFS= read -r line; do
+    echo "$line" >> "$STDERR_FILE"
+    if [ "$SILENT" != true ]; then
+        # Strip timestamp and log prefix to show clean progress
+        msg=$(echo "$line" | sed 's/^[0-9-]* [0-9:,]*[[:space:]]*\[[A-Z]*\][[:space:]]*[^:]*:[[:space:]]*//')
+        echo "  → $msg"
+    fi
+done < "$STDERR_FIFO") &
+READER_PID=$!
+
+# Run Python pipeline:
+#   - stdout (KEY=VALUE summary) → captured to file
+#   - stderr (log lines) → FIFO for real-time display
+uv run --directory "$PROJECT_ROOT" aeromux-db > "$SUMMARY_FILE" 2>"$STDERR_FIFO"
+GENERATE_EXIT=$?
+
+wait "$READER_PID"
+
+if [ "$GENERATE_EXIT" -ne 0 ]; then
     [ "$SILENT" = true ] || echo "✗ $CURRENT_STEP failed"
     echo ""
     echo "================================================"
     echo "GENERATE FAILED"
     echo "================================================"
+    GENERATE_OUTPUT=$(cat "$STDERR_FILE" 2>/dev/null)
     if [ -n "$GENERATE_OUTPUT" ]; then
         echo ""
         echo "An error occurred during generation. See the log below for details."
@@ -118,11 +147,12 @@ GENERATE_OUTPUT=$(uv run --directory "$PROJECT_ROOT" aeromux-db 2>&1) || {
     fi
     echo ""
     exit 1
-}
+fi
 log "✓ Database generated"
 log ""
 
-# Parse summary values from Python output
+# Parse summary values from Python output (stdout)
+GENERATE_OUTPUT=$(cat "$SUMMARY_FILE")
 OUTPUT_FILE=$(echo "$GENERATE_OUTPUT" | grep "^OUTPUT_FILE=" | cut -d= -f2-)
 AIRCRAFT_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^AIRCRAFT_COUNT=" | cut -d= -f2-)
 TYPES_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^TYPES_COUNT=" | cut -d= -f2-)
@@ -143,6 +173,10 @@ log "Records:"
 log "  - Aircraft: $AIRCRAFT_COUNT"
 log "  - Types: $TYPES_COUNT"
 log "  - Operators: $OPERATORS_COUNT"
+log ""
+
+ELAPSED=$((SECONDS - START_TIME))
+log "Elapsed time: ${ELAPSED}s"
 log ""
 
 # Step 4: Cleanup

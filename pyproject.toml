@@ -1,0 +1,19 @@
+[project]
+name = "aeromux-db"
+version = "1.0.0"
+description = "Aeromux Database Builder — generates a SQLite database from external aircraft data sources."
+requires-python = ">=3.14"
+license = "GPL-3.0-or-later"
+authors = [
+    { name = "Nandor Toth", email = "dev@nandortoth.com" },
+]
+dependencies = [
+    "httpx",
+]
+
+[project.scripts]
+aeromux-db = "aeromux_db.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

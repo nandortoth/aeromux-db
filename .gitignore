@@ -1,0 +1,32 @@
+# Python
+.venv/
+__pycache__/
+*.egg-info
+
+# Build artifacts
+artifacts/*.sqlite
+
+# Temp/cache
+temp/*
+!temp/.gitkeep
+
+# Research
+research/
+
+# Logs
+logs/
+
+# IDEs
+.idea/
+.vs/
+.vscode/
+.claude/
+
+# User-specific files
+*.user
+*.suo
+*.userprefs
+
+# OS files
+.DS_Store
+Thumbs.db

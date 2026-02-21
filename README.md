@@ -89,7 +89,7 @@ The database contains the following tables:
 | `schema_version` | Database schema version, so Aeromux can verify compatibility. |
 | `record_count` | Total number of aircraft records in the database. |
 
-The full SQL schema is defined in [`schema/schema.sql`](schema/schema.sql) and documented in [`schema/schema.md`](schema/schema.md).
+The full SQL schema is defined in [`schema/schema.sql`](schema/schema.sql) and documented in [`schema/schema.md`](schema/schema.md). For detailed data source formats, merge logic, and conflict resolution rules, see the [Developer Guide](DEVELOPER.md).
 
 ## Data Sources
 
@@ -106,9 +106,10 @@ The tool downloads each data source to `temp/`, extracts and parses the data, an
 
 ```
 aeromux-db/
-├── generate.sh              # Single entry point for building the database
+├── generate.sh            # Single entry point for building the database
 ├── pyproject.toml         # Project metadata and dependencies (PEP 621)
 ├── uv.lock                # Lockfile for reproducible builds
+├── DEVELOPER.md           # Technical reference for developers
 ├── src/
 │   └── aeromux_db/
 │       ├── __init__.py    # Package version

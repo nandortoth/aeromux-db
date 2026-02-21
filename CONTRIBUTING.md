@@ -94,7 +94,7 @@ uv run ruff check --fix
 
 ## Architecture Overview
 
-Aeromux Database Builder follows a simple pipeline architecture:
+Aeromux Database Builder follows a sequential pipeline architecture:
 
 ```
 src/aeromux_db/
@@ -103,12 +103,18 @@ src/aeromux_db/
 ├── cli.py                # Command-line argument parsing
 ├── downloader.py         # File download with caching and ZIP extraction
 ├── models.py             # Data models (Aircraft, AircraftType, Operator)
+├── version.py            # Calendar-based database version computation
 ├── builder.py            # SQLite database construction
 └── sources/
-    └── mictronics.py     # Mictronics data source parser
+    ├── mictronics.py     # Mictronics data source parser
+    ├── adsbexchange.py   # ADS-B Exchange data source parser
+    ├── opensky.py        # OpenSky Network data source parser
+    └── typelongnames.py  # Type-longnames data source parser
 ```
 
-**Pipeline flow:** Download → Extract → Parse → Build
+**Pipeline flow:** Download → Extract → Parse → Merge → Build
+
+For detailed documentation on data source formats, merge logic, and conflict resolution rules, see the [Developer Guide](DEVELOPER.md).
 
 When contributing, place your code in the appropriate module:
 

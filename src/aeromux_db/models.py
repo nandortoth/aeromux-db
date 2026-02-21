@@ -81,6 +81,16 @@ class AircraftFallbackData:
 
 
 @dataclass
+class TypeLongnameData:
+    """Per-aircraft type description from type-longnames source."""
+
+    aircraft_icao_address: str
+    aircraft_registration: str | None = None
+    aircraft_type_code: str | None = None
+    type_description: str | None = None
+
+
+@dataclass
 class OpenSkyAircraftData:
     """Enrichment data for an aircraft from OpenSky Network."""
 

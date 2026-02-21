@@ -22,7 +22,7 @@ import time
 from aeromux_db import __version__
 from aeromux_db.builder import build_database
 from aeromux_db.cli import parse_args
-from aeromux_db.downloader import download, extract_zip, fetch_text
+from aeromux_db.downloader import download, extract_tarball, extract_zip, fetch_text
 from aeromux_db.sources.adsbexchange import (
     SOURCE_FILENAME as ADSBX_SOURCE_FILENAME,
     SOURCE_URL as ADSBX_SOURCE_URL,
@@ -44,6 +44,11 @@ from aeromux_db.sources.opensky import (
     parse_manufacturers as opensky_parse_manufacturers,
     parse_operator_iata as opensky_parse_operator_iata,
     resolve_latest_filename as opensky_resolve_latest_filename,
+)
+from aeromux_db.sources.typelongnames import (
+    SOURCE_FILENAME as TYPELONGNAMES_SOURCE_FILENAME,
+    SOURCE_URL as TYPELONGNAMES_SOURCE_URL,
+    parse_aircraft as typelongnames_parse_aircraft,
 )
 
 logger = logging.getLogger("aeromux_db")
@@ -77,7 +82,7 @@ def main() -> None:
 
     try:
         # Step 1: Download Mictronics
-        logger.info("Step 1/8: Downloading Mictronics database...")
+        logger.info("Step 1/11: Downloading Mictronics database...")
         result = download(SOURCE_URL, SOURCE_FILENAME)
         file_size_str = _format_file_size(result.size_bytes)
         if result.cached:
@@ -86,12 +91,12 @@ def main() -> None:
             logger.info("  Downloaded %s", file_size_str)
 
         # Step 2: Extract Mictronics
-        logger.info("Step 2/8: Extracting Mictronics archive...")
+        logger.info("Step 2/11: Extracting Mictronics archive...")
         extract = extract_zip(result.path)
         logger.info("  Extracted %d files", extract.file_count)
 
         # Step 3: Parse Mictronics
-        logger.info("Step 3/8: Parsing Mictronics data...")
+        logger.info("Step 3/11: Parsing Mictronics data...")
         logger.info("  Parsing types...")
         types = parse_types(extract.path)
         logger.info("  Parsed %s types", f"{len(types):,}")
@@ -103,7 +108,7 @@ def main() -> None:
         logger.info("  Parsed %s aircraft", f"{len(aircraft):,}")
 
         # Step 4: Download ADS-B Exchange
-        logger.info("Step 4/8: Downloading ADS-B Exchange database...")
+        logger.info("Step 4/11: Downloading ADS-B Exchange database...")
         adsbx_result = download(ADSBX_SOURCE_URL, ADSBX_SOURCE_FILENAME)
         adsbx_size_str = _format_file_size(adsbx_result.size_bytes)
         if adsbx_result.cached:
@@ -112,7 +117,7 @@ def main() -> None:
             logger.info("  Downloaded %s", adsbx_size_str)
 
         # Step 5: Parse ADS-B Exchange
-        logger.info("Step 5/8: Parsing ADS-B Exchange data...")
+        logger.info("Step 5/11: Parsing ADS-B Exchange data...")
         logger.info("  Parsing aircraft...")
         adsbx_aircraft = adsbx_parse_aircraft(adsbx_result.path)
         logger.info("  Parsed %s aircraft", f"{len(adsbx_aircraft):,}")
@@ -124,7 +129,7 @@ def main() -> None:
         logger.info("  Parsed %s aircraft fallback records", f"{len(adsbx_fallback):,}")
 
         # Step 6: Download OpenSky Network
-        logger.info("Step 6/8: Downloading OpenSky Network database...")
+        logger.info("Step 6/11: Downloading OpenSky Network database...")
         logger.info("  Resolving latest filename...")
         listing_xml = fetch_text(OPENSKY_S3_LISTING_URL)
         opensky_filename = opensky_resolve_latest_filename(listing_xml)
@@ -138,7 +143,7 @@ def main() -> None:
             logger.info("  Downloaded %s", opensky_size_str)
 
         # Step 7: Parse OpenSky Network
-        logger.info("Step 7/8: Parsing OpenSky Network data...")
+        logger.info("Step 7/11: Parsing OpenSky Network data...")
         logger.info("  Parsing manufacturers...")
         opensky_manufacturers = opensky_parse_manufacturers(opensky_result.path)
         logger.info("  Parsed %s manufacturers", f"{len(opensky_manufacturers):,}")
@@ -149,8 +154,27 @@ def main() -> None:
         opensky_enrichment = opensky_parse_aircraft_enrichment(opensky_result.path)
         logger.info("  Parsed %s aircraft enrichment records", f"{len(opensky_enrichment):,}")
 
-        # Step 8: Build database
-        logger.info("Step 8/8: Building database...")
+        # Step 8: Download type-longnames
+        logger.info("Step 8/11: Downloading type-longnames database...")
+        typelongnames_result = download(TYPELONGNAMES_SOURCE_URL, TYPELONGNAMES_SOURCE_FILENAME)
+        typelongnames_size_str = _format_file_size(typelongnames_result.size_bytes)
+        if typelongnames_result.cached:
+            logger.info("  Using cached file (%s)", typelongnames_size_str)
+        else:
+            logger.info("  Downloaded %s", typelongnames_size_str)
+
+        # Step 9: Extract type-longnames
+        logger.info("Step 9/11: Extracting type-longnames archive...")
+        typelongnames_extract = extract_tarball(typelongnames_result.path)
+        logger.info("  Extracted %d files", typelongnames_extract.file_count)
+
+        # Step 10: Parse type-longnames
+        logger.info("Step 10/11: Parsing type-longnames data...")
+        typelongnames_aircraft = typelongnames_parse_aircraft(typelongnames_extract.path)
+        logger.info("  Parsed %s aircraft", f"{len(typelongnames_aircraft):,}")
+
+        # Step 11: Build database
+        logger.info("Step 11/11: Building database...")
         result = build_database(
             aircraft,
             types,
@@ -161,6 +185,7 @@ def main() -> None:
             opensky_manufacturers,
             opensky_op_iata,
             opensky_enrichment,
+            typelongnames_aircraft,
         )
 
         # Summary
@@ -185,6 +210,7 @@ def main() -> None:
         print(f"ADSBX_FALLBACK_COUNT={len(adsbx_fallback):,}")
         print(f"OPENSKY_MANUFACTURERS_COUNT={len(opensky_manufacturers):,}")
         print(f"OPENSKY_ENRICHMENT_COUNT={len(opensky_enrichment):,}")
+        print(f"TYPELONGNAMES_AIRCRAFT_COUNT={len(typelongnames_aircraft):,}")
         print(f"FILE_SIZE={output_file_size}")
     except Exception:
         logger.exception("Build failed")

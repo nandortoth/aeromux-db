@@ -15,6 +15,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import logging
+import tarfile
 import time
 import zipfile
 from collections.abc import Callable
@@ -139,6 +140,36 @@ def extract_zip(zip_path: Path, dest_dir: Path | None = None) -> ExtractResult:
     with zipfile.ZipFile(zip_path, "r") as zf:
         file_count = len(zf.namelist())
         zf.extractall(dest_dir)
+
+    logger.debug("Extracted %d files to %s", file_count, dest_dir)
+    return ExtractResult(path=dest_dir, file_count=file_count)
+
+
+def extract_tarball(tar_path: Path, dest_dir: Path | None = None) -> ExtractResult:
+    """Extract a tar.gz archive to a directory.
+
+    Args:
+        tar_path: Path to the tar.gz file to extract.
+        dest_dir: Destination directory. Defaults to a sibling directory
+            named after the archive stem (without .tar.gz).
+
+    Returns:
+        ExtractResult with path and file count.
+    """
+    if dest_dir is None:
+        stem = tar_path.name
+        for suffix in (".tar.gz", ".tgz"):
+            if stem.endswith(suffix):
+                stem = stem[: -len(suffix)]
+                break
+        dest_dir = tar_path.parent / stem
+
+    logger.debug("Extracting %s to %s", tar_path, dest_dir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    with tarfile.open(tar_path, "r:gz") as tf:
+        file_count = len(tf.getnames())
+        tf.extractall(dest_dir, filter="data")
 
     logger.debug("Extracted %d files to %s", file_count, dest_dir)
     return ExtractResult(path=dest_dir, file_count=file_count)

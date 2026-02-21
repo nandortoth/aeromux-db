@@ -40,6 +40,20 @@ class Operator:
 class Aircraft:
     """Individual aircraft identified by ICAO 24-bit hex address."""
 
-    icao_address: str
-    registration: str | None = None
-    type_code: str | None = None
+    aircraft_icao_address: str
+    aircraft_registration: str | None = None
+    aircraft_type_code: str | None = None
+
+
+@dataclass
+class AircraftDetails:
+    """Extended aircraft information from ADS-B Exchange."""
+
+    aircraft_icao_address: str
+    year: str | None = None
+    manufacturer: str | None = None
+    model: str | None = None
+    owner_operator: str | None = None
+    faa_pia: bool = False
+    faa_ladd: bool = False
+    military: bool = False

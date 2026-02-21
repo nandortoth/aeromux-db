@@ -34,7 +34,7 @@ git clone https://github.com/nandortoth/aeromux-db.git
 cd aeromux-db
 
 # Build the database using the convenience script
-./build.sh
+./generate.sh
 ```
 
 The build script handles everything: installs dependencies via `uv`, downloads data sources, and produces a fresh SQLite database in the `artifacts/` directory.
@@ -68,9 +68,10 @@ The database contains four tables:
 
 | Table | Description |
 |---|---|
-| `aircraft` | One row per aircraft, keyed by ICAO 24-bit hex address. References `types` via type code. |
+| `aircrafts` | One row per aircraft, keyed by ICAO 24-bit hex address. References `types` via type code. |
 | `types` | Aircraft type lookup — type code, description, and ICAO class (e.g., `L2J` for land-based, two-engine jet). |
 | `operators` | Operator lookup — ICAO airline designator, name, country, and callsign. |
+| `aircraft_details` | Extended aircraft information — year, manufacturer, model, owner/operator, FAA flags, and military flag. References `aircrafts` via ICAO address. |
 | `metadata` | Build metadata as key-value pairs. |
 
 ### Metadata
@@ -89,6 +90,7 @@ The full SQL schema is defined in [`schema/schema.sql`](schema/schema.sql) and d
 | Source | Description |
 |---|---|
 | [Mictronics Aircraft Database](https://www.mictronics.de/aircraft-database/) | Aircraft registrations, type designators, and operator information. Distributed as a ZIP archive containing JSON files. |
+| [ADS-B Exchange Aircraft Database](https://www.adsbexchange.com/products/historical-data/) | Aircraft registrations with extended details (year, manufacturer, model, owner/operator, FAA flags, military flag). Distributed as a gzip-compressed JSON file, updated daily. |
 
 The tool downloads each data source to `temp/`, extracts and parses the data, and inserts the records into the database. Sources less than 1 hour old are reused from cache.
 
@@ -96,7 +98,7 @@ The tool downloads each data source to `temp/`, extracts and parses the data, an
 
 ```
 aeromux-db/
-├── build.sh              # Single entry point for building the database
+├── generate.sh              # Single entry point for building the database
 ├── pyproject.toml         # Project metadata and dependencies (PEP 621)
 ├── uv.lock                # Lockfile for reproducible builds
 ├── src/
@@ -108,7 +110,8 @@ aeromux-db/
 │       ├── models.py      # Data models (Aircraft, AircraftType, Operator)
 │       ├── builder.py     # SQLite database construction
 │       └── sources/
-│           └── mictronics.py  # Mictronics data source parser
+│           ├── mictronics.py      # Mictronics data source parser
+│           └── adsbexchange.py    # ADS-B Exchange data source parser
 ├── schema/
 │   ├── schema.sql         # Authoritative SQL schema (single source of truth)
 │   └── schema.md          # Human-readable schema documentation
@@ -136,6 +139,7 @@ Aeromux Database Builder is free software, released under the [GNU General Publi
 This project would not be possible without the following data sources and their maintainers:
 
 - **[Mictronics Aircraft Database](https://www.mictronics.de/aircraft-database/)** — Comprehensive aircraft database providing registration, type, and operator data for hundreds of thousands of aircraft worldwide. Thank you for making this invaluable resource freely available to the aviation community.
+- **[ADS-B Exchange](https://www.adsbexchange.com/)** — Unfiltered flight tracking data and aircraft database, updated daily from government and various sources. Thank you for providing open access to aircraft data.
 
 ## Contact
 

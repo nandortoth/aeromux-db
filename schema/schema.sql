@@ -27,11 +27,40 @@ CREATE TABLE operators (
     operator_callsign TEXT
 );
 
-CREATE TABLE aircraft (
-    icao_address TEXT PRIMARY KEY,
-    registration TEXT,
-    type_code TEXT REFERENCES types(type_code)
+CREATE TABLE aircrafts (
+    aircraft_icao_address TEXT PRIMARY KEY,
+    aircraft_registration TEXT,
+    aircraft_type_code TEXT REFERENCES types(type_code)
 );
+
+CREATE TABLE aircraft_details (
+    aircraft_icao_address TEXT PRIMARY KEY REFERENCES aircrafts(aircraft_icao_address),
+    year TEXT,
+    manufacturer TEXT,
+    model TEXT,
+    owner_operator TEXT,
+    faa_pia INTEGER,
+    faa_ladd INTEGER,
+    military INTEGER
+);
+
+CREATE VIEW aircraft_view AS
+SELECT
+    a.aircraft_icao_address,
+    a.aircraft_registration,
+    a.aircraft_type_code,
+    t.type_description,
+    t.type_icao_class,
+    d.year,
+    d.manufacturer,
+    d.model,
+    d.owner_operator,
+    d.faa_pia,
+    d.faa_ladd,
+    d.military
+FROM aircrafts a
+LEFT JOIN types t ON a.aircraft_type_code = t.type_code
+LEFT JOIN aircraft_details d ON a.aircraft_icao_address = d.aircraft_icao_address;
 
 CREATE TABLE metadata (
     key TEXT PRIMARY KEY,

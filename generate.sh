@@ -118,7 +118,16 @@ trap "rm -f '$SUMMARY_FILE' '$STDERR_FILE' '$STDERR_FIFO'" EXIT
     if [ "$SILENT" != true ]; then
         # Strip timestamp and log prefix to show clean progress
         msg=$(echo "$line" | sed 's/^[0-9-]* [0-9:,]*[[:space:]]*\[[A-Z]*\][[:space:]]*[^:]*:[[:space:]]*//')
-        echo "  → $msg"
+        if echo "$msg" | grep -q '^Step [0-9]'; then
+            # Step header — display prominently
+            echo "  → $msg"
+        elif echo "$msg" | grep -q '^Build complete'; then
+            # Final summary — display prominently
+            echo "  → $msg"
+        else
+            # Sub-step detail — indent further
+            echo "      $msg"
+        fi
     fi
 done < "$STDERR_FIFO") &
 READER_PID=$!
@@ -157,6 +166,8 @@ OUTPUT_FILE=$(echo "$GENERATE_OUTPUT" | grep "^OUTPUT_FILE=" | cut -d= -f2-)
 AIRCRAFT_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^AIRCRAFT_COUNT=" | cut -d= -f2-)
 TYPES_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^TYPES_COUNT=" | cut -d= -f2-)
 OPERATORS_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^OPERATORS_COUNT=" | cut -d= -f2-)
+ADSBX_AIRCRAFT_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^ADSBX_AIRCRAFT_COUNT=" | cut -d= -f2-)
+ADSBX_DETAILS_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^ADSBX_DETAILS_COUNT=" | cut -d= -f2-)
 FILE_SIZE=$(echo "$GENERATE_OUTPUT" | grep "^FILE_SIZE=" | cut -d= -f2-)
 
 # Summary
@@ -173,6 +184,7 @@ log "Records:"
 log "  - Aircraft: $AIRCRAFT_COUNT"
 log "  - Types: $TYPES_COUNT"
 log "  - Operators: $OPERATORS_COUNT"
+log "  - Aircraft details: $ADSBX_DETAILS_COUNT"
 log ""
 
 ELAPSED=$((SECONDS - START_TIME))

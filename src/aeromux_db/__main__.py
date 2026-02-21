@@ -23,6 +23,12 @@ from aeromux_db import __version__
 from aeromux_db.builder import build_database
 from aeromux_db.cli import parse_args
 from aeromux_db.downloader import download, extract_zip
+from aeromux_db.sources.adsbexchange import (
+    SOURCE_FILENAME as ADSBX_SOURCE_FILENAME,
+    SOURCE_URL as ADSBX_SOURCE_URL,
+    parse_aircraft as adsbx_parse_aircraft,
+    parse_aircraft_details as adsbx_parse_aircraft_details,
+)
 from aeromux_db.sources.mictronics import (
     SOURCE_FILENAME,
     SOURCE_URL,
@@ -61,53 +67,75 @@ def main() -> None:
     start_time = time.monotonic()
 
     try:
-        # Step 1: Download
-        logger.info("[1/4] Downloading Mictronics database...")
+        # Step 1: Download Mictronics
+        logger.info("Step 1/6: Downloading Mictronics database...")
         result = download(SOURCE_URL, SOURCE_FILENAME)
         file_size_str = _format_file_size(result.size_bytes)
         if result.cached:
-            logger.info("Using cached file (%s)", file_size_str)
+            logger.info("  Using cached file (%s)", file_size_str)
         else:
-            logger.info("Downloaded %s", file_size_str)
+            logger.info("  Downloaded %s", file_size_str)
 
-        # Step 2: Extract
-        logger.info("[2/4] Extracting archive...")
+        # Step 2: Extract Mictronics
+        logger.info("Step 2/6: Extracting Mictronics archive...")
         extract = extract_zip(result.path)
-        logger.info("Extracted %d files", extract.file_count)
+        logger.info("  Extracted %d files", extract.file_count)
 
-        # Step 3: Parse
-        logger.info("[3/4] Parsing data sources...")
-        logger.info("Parsing types...")
+        # Step 3: Parse Mictronics
+        logger.info("Step 3/6: Parsing Mictronics data...")
+        logger.info("  Parsing types...")
         types = parse_types(extract.path)
-        logger.info("Parsed %s types", f"{len(types):,}")
-        logger.info("Parsing operators...")
+        logger.info("  Parsed %s types", f"{len(types):,}")
+        logger.info("  Parsing operators...")
         operators = parse_operators(extract.path)
-        logger.info("Parsed %s operators", f"{len(operators):,}")
-        logger.info("Parsing aircraft...")
+        logger.info("  Parsed %s operators", f"{len(operators):,}")
+        logger.info("  Parsing aircraft...")
         aircraft = parse_aircraft(extract.path)
-        logger.info("Parsed %s aircraft", f"{len(aircraft):,}")
+        logger.info("  Parsed %s aircraft", f"{len(aircraft):,}")
 
-        # Step 4: Build database
-        logger.info("[4/4] Building database...")
-        output_path = build_database(aircraft, types, operators)
+        # Step 4: Download ADS-B Exchange
+        logger.info("Step 4/6: Downloading ADS-B Exchange database...")
+        adsbx_result = download(ADSBX_SOURCE_URL, ADSBX_SOURCE_FILENAME)
+        adsbx_size_str = _format_file_size(adsbx_result.size_bytes)
+        if adsbx_result.cached:
+            logger.info("  Using cached file (%s)", adsbx_size_str)
+        else:
+            logger.info("  Downloaded %s", adsbx_size_str)
+
+        # Step 5: Parse ADS-B Exchange
+        logger.info("Step 5/6: Parsing ADS-B Exchange data...")
+        logger.info("  Parsing aircraft...")
+        adsbx_aircraft = adsbx_parse_aircraft(adsbx_result.path)
+        logger.info("  Parsed %s aircraft", f"{len(adsbx_aircraft):,}")
+        logger.info("  Parsing aircraft details...")
+        adsbx_details = adsbx_parse_aircraft_details(adsbx_result.path)
+        logger.info("  Parsed %s aircraft details", f"{len(adsbx_details):,}")
+
+        # Step 6: Build database
+        logger.info("Step 6/6: Building database...")
+        result = build_database(
+            aircraft, types, operators, adsbx_aircraft, adsbx_details
+        )
 
         # Summary
         elapsed = time.monotonic() - start_time
         logger.info("Build complete! (%.1fs)", elapsed)
         logger.debug(
             "Output: %s | Aircraft: %s | Types: %s | Operators: %s",
-            output_path,
-            f"{len(aircraft):,}",
+            result.path,
+            f"{result.total_aircraft:,}",
             f"{len(types):,}",
             f"{len(operators):,}",
         )
 
         # Print structured summary to stdout for shell integration
-        output_file_size = _format_file_size(os.path.getsize(output_path))
-        print(f"OUTPUT_FILE={output_path}")
-        print(f"AIRCRAFT_COUNT={len(aircraft):,}")
+        output_file_size = _format_file_size(os.path.getsize(result.path))
+        print(f"OUTPUT_FILE={result.path}")
+        print(f"AIRCRAFT_COUNT={result.total_aircraft:,}")
         print(f"TYPES_COUNT={len(types):,}")
         print(f"OPERATORS_COUNT={len(operators):,}")
+        print(f"ADSBX_AIRCRAFT_COUNT={len(adsbx_aircraft):,}")
+        print(f"ADSBX_DETAILS_COUNT={len(adsbx_details):,}")
         print(f"FILE_SIZE={output_file_size}")
     except Exception:
         logger.exception("Build failed")

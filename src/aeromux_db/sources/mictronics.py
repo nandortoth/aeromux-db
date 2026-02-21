@@ -26,6 +26,14 @@ SOURCE_URL = "https://www.mictronics.de/aircraft-database/indexedDB.php"
 SOURCE_FILENAME = "mictronics.zip"
 
 
+def _sanitize(value: str | None) -> str | None:
+    """Replace double single-quotes with a single quote."""
+    if value is None:
+        return None
+    value = value.replace("''", "'")
+    return value or None
+
+
 def parse_types(data_dir: Path) -> list[AircraftType]:
     """Parse types.json into AircraftType records.
 
@@ -45,8 +53,8 @@ def parse_types(data_dir: Path) -> list[AircraftType]:
         types.append(
             AircraftType(
                 type_code=type_code,
-                type_description=values[0] if len(values) > 0 else None,
-                type_icao_class=values[1] if len(values) > 1 else None,
+                type_description=_sanitize(values[0]) if len(values) > 0 else None,
+                type_icao_class=_sanitize(values[1]) if len(values) > 1 else None,
             )
         )
     logger.debug("Parsed %d types from Mictronics", len(types))
@@ -72,9 +80,9 @@ def parse_operators(data_dir: Path) -> list[Operator]:
         operators.append(
             Operator(
                 operator_icao=operator_icao,
-                operator_name=values[0] if len(values) > 0 else None,
-                operator_country=values[1] if len(values) > 1 else None,
-                operator_callsign=values[2] if len(values) > 2 else None,
+                operator_name=_sanitize(values[0]) if len(values) > 0 else None,
+                operator_country=_sanitize(values[1]) if len(values) > 1 else None,
+                operator_callsign=_sanitize(values[2]) if len(values) > 2 else None,
             )
         )
     logger.debug("Parsed %d operators from Mictronics", len(operators))
@@ -100,9 +108,9 @@ def parse_aircraft(data_dir: Path) -> list[Aircraft]:
         aircraft.append(
             Aircraft(
                 # Normalize to uppercase — source data uses mixed-case ICAO addresses
-                icao_address=icao_address.upper(),
-                registration=values[0] if len(values) > 0 and values[0] else None,
-                type_code=values[1] if len(values) > 1 and values[1] else None,
+                aircraft_icao_address=icao_address.upper(),
+                aircraft_registration=_sanitize(values[0]) if len(values) > 0 and values[0] else None,
+                aircraft_type_code=_sanitize(values[1]) if len(values) > 1 and values[1] else None,
             )
         )
     logger.debug("Parsed %d aircraft from Mictronics", len(aircraft))

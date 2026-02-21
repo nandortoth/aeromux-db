@@ -31,6 +31,7 @@ ARTIFACTS_DIR="$PROJECT_ROOT/artifacts"
 
 # Parse named parameters
 SILENT=false
+RELEASE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -38,17 +39,23 @@ while [[ $# -gt 0 ]]; do
             SILENT=true
             shift
             ;;
+        --release)
+            RELEASE="$2"
+            shift 2
+            ;;
         *)
             echo "ERROR: Unknown option: $1"
             echo ""
             echo "Usage: ./generate.sh [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --silent  Suppress all output (only errors are shown)"
+            echo "  --silent       Suppress all output (only errors are shown)"
+            echo "  --release N    Release number within the current week (default: 1)"
             echo ""
             echo "Examples:"
-            echo "  ./generate.sh           # Generate database with full output"
-            echo "  ./generate.sh --silent   # Generate database silently"
+            echo "  ./generate.sh                # Generate database with full output"
+            echo "  ./generate.sh --silent        # Generate database silently"
+            echo "  ./generate.sh --release 2     # Generate second release of the week"
             exit 1
             ;;
     esac
@@ -135,7 +142,9 @@ READER_PID=$!
 # Run Python pipeline:
 #   - stdout (KEY=VALUE summary) → captured to file
 #   - stderr (log lines) → FIFO for real-time display
-uv run --directory "$PROJECT_ROOT" aeromux-db > "$SUMMARY_FILE" 2>"$STDERR_FIFO"
+EXTRA_ARGS=()
+[ -n "$RELEASE" ] && EXTRA_ARGS+=(--release "$RELEASE")
+uv run --directory "$PROJECT_ROOT" aeromux-db "${EXTRA_ARGS[@]}" > "$SUMMARY_FILE" 2>"$STDERR_FIFO"
 GENERATE_EXIT=$?
 
 wait "$READER_PID"

@@ -9,7 +9,7 @@ Aeromux Database Builder generates a SQLite database from external aircraft data
 
 ## Features
 
-- **Multiple Data Sources** — Aggregates aircraft data from external sources into a single, unified SQLite database. Currently supports the Mictronics aircraft database, with the architecture designed for additional sources.
+- **Multiple Data Sources** — Aggregates aircraft data from four external sources (Mictronics, ADS-B Exchange, OpenSky Network, type-longnames) into a single, unified SQLite database.
 
 - **Fast Local Lookups** — Provides Aeromux with aircraft metadata keyed by ICAO 24-bit address for instant enrichment of decoded messages.
 
@@ -50,6 +50,9 @@ uv run aeromux-db
 
 # Run with verbose/debug output
 uv run aeromux-db --verbose
+
+# Specify release number (for multiple builds in the same week)
+uv run aeromux-db --release 2
 ```
 
 ### Output
@@ -57,14 +60,14 @@ uv run aeromux-db --verbose
 The generated database is written to:
 
 ```
-artifacts/aeromux-db_VERSION.sqlite
+artifacts/aeromux-db_YYYY.Q.wWW_rR.sqlite
 ```
 
-Where `VERSION` is read from `pyproject.toml` (e.g., `aeromux-db_1.0.0.sqlite`).
+Where `YYYY` is the year, `Q` is the quarter (1–4), `WW` is the ISO 8601 week number (zero-padded), and `R` is the release number within that week (e.g., `aeromux-db_2026.1.w08_r1.sqlite`). The version is computed automatically at build time.
 
 ## Database Schema
 
-The database contains four tables:
+The database contains the following tables:
 
 | Table | Description |
 |---|---|
@@ -72,6 +75,8 @@ The database contains four tables:
 | `types` | Aircraft type lookup — type code, description, and ICAO class (e.g., `L2J` for land-based, two-engine jet). |
 | `operators` | Operator lookup — ICAO airline designator, name, country, and callsign. |
 | `aircraft_details` | Extended aircraft information — year, manufacturer, model, owner/operator, FAA flags, and military flag. References `aircrafts` via ICAO address. |
+| `aircraft_fallbackdata` | Fallback plain-text manufacturer and operator names for aircraft without normalized references. |
+| `manufacturers` | Manufacturer lookup — ICAO code and name. |
 | `metadata` | Build metadata as key-value pairs. |
 
 ### Metadata
@@ -79,7 +84,8 @@ The database contains four tables:
 | Key | Description |
 |---|---|
 | `build_timestamp` | ISO 8601 UTC timestamp of when the database was generated. |
-| `tool_version` | Version of the builder tool that produced the database. |
+| `db_version` | Calendar-based database version (e.g. `2026.1.w08_r1`). |
+| `tool_version` | Version of the builder tool that produced the database (from `pyproject.toml`). |
 | `schema_version` | Database schema version, so Aeromux can verify compatibility. |
 | `record_count` | Total number of aircraft records in the database. |
 
@@ -91,6 +97,8 @@ The full SQL schema is defined in [`schema/schema.sql`](schema/schema.sql) and d
 |---|---|
 | [Mictronics Aircraft Database](https://www.mictronics.de/aircraft-database/) | Aircraft registrations, type designators, and operator information. Distributed as a ZIP archive containing JSON files. |
 | [ADS-B Exchange Aircraft Database](https://www.adsbexchange.com/products/historical-data/) | Aircraft registrations with extended details (year, manufacturer, model, owner/operator, FAA flags, military flag). Distributed as a gzip-compressed JSON file, updated daily. |
+| [OpenSky Network Aircraft Database](https://opensky-network.org/datasets/metadata/) | Manufacturer records, operator IATA codes, and aircraft enrichment data (country, serial number, owner). Distributed as a monthly CSV file. |
+| [Type-Longnames (wiedehopf/chrisglobe)](https://github.com/wiedehopf/type-longnames-chrisglobe) | Per-aircraft type descriptions (e.g. `Boeing C-40A Clipper`). Distributed as a tarball of CSV files, one per type code. |
 
 The tool downloads each data source to `temp/`, extracts and parses the data, and inserts the records into the database. Sources less than 1 hour old are reused from cache.
 
@@ -108,10 +116,13 @@ aeromux-db/
 │       ├── cli.py         # Command-line argument parsing
 │       ├── downloader.py  # File download with caching and ZIP extraction
 │       ├── models.py      # Data models (Aircraft, AircraftType, Operator)
+│       ├── version.py     # Calendar-based database version computation
 │       ├── builder.py     # SQLite database construction
 │       └── sources/
 │           ├── mictronics.py      # Mictronics data source parser
-│           └── adsbexchange.py    # ADS-B Exchange data source parser
+│           ├── adsbexchange.py    # ADS-B Exchange data source parser
+│           ├── opensky.py         # OpenSky Network data source parser
+│           └── typelongnames.py   # Type-longnames data source parser
 ├── schema/
 │   ├── schema.sql         # Authoritative SQL schema (single source of truth)
 │   └── schema.md          # Human-readable schema documentation
@@ -140,6 +151,8 @@ This project would not be possible without the following data sources and their 
 
 - **[Mictronics Aircraft Database](https://www.mictronics.de/aircraft-database/)** — Comprehensive aircraft database providing registration, type, and operator data for hundreds of thousands of aircraft worldwide. Thank you for making this invaluable resource freely available to the aviation community.
 - **[ADS-B Exchange](https://www.adsbexchange.com/)** — Unfiltered flight tracking data and aircraft database, updated daily from government and various sources. Thank you for providing open access to aircraft data.
+- **[OpenSky Network](https://opensky-network.org/)** — Community-driven aircraft metadata including manufacturer records, operator IATA codes, and enrichment data. Thank you for maintaining this open dataset.
+- **[Type-Longnames (wiedehopf/chrisglobe)](https://github.com/wiedehopf/type-longnames-chrisglobe)** — Per-aircraft type descriptions that provide specific model variants beyond generic type codes. Thank you for curating this detailed dataset.
 
 ## Contact
 

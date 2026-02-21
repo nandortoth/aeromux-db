@@ -14,28 +14,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import argparse
+from datetime import datetime, timezone
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments.
+def get_db_version(release: int = 1) -> str:
+    """Build a calendar-based database version string.
+
+    Format: ``YYYY.Q.wWW_rR`` where *YYYY* is the year, *Q* is the
+    quarter (1–4), *WW* is the ISO 8601 week number (zero-padded), and
+    *R* is the release number within that week.
+
+    Args:
+        release: Release number for the current week (default 1).
 
     Returns:
-        Parsed namespace with ``verbose`` and ``release`` attributes.
+        Version string, e.g. ``2026.1.w08_r1``.
     """
-    parser = argparse.ArgumentParser(
-        prog="aeromux-db",
-        description="Aeromux Database Builder — generates a SQLite database from external aircraft data sources.",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose/debug output.",
-    )
-    parser.add_argument(
-        "--release",
-        type=int,
-        default=1,
-        help="Release number within the current week (default: 1).",
-    )
-    return parser.parse_args()
+    today = datetime.now(timezone.utc).date()
+    year = today.year
+    quarter = (today.month - 1) // 3 + 1
+    week = today.isocalendar()[1]
+    return f"{year}.{quarter}.w{week:02d}_r{release}"

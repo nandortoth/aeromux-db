@@ -5,6 +5,7 @@ __pycache__/
 
 # Build artifacts
 artifacts/*.sqlite
+artifacts/*.csv
 
 # Temp/cache
 temp/*

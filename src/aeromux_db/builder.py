@@ -120,6 +120,8 @@ def build_database(
     opensky_operator_iata: dict[str, str] | None = None,
     opensky_aircraft: list[OpenSkyAircraftData] | None = None,
     typelongnames_aircraft: list[TypeLongnameData] | None = None,
+    *,
+    db_version: str,
 ) -> BuildResult:
     """Build the SQLite database and return the output path.
 
@@ -145,6 +147,8 @@ def build_database(
         opensky_aircraft: Aircraft enrichment data from OpenSky Network.
         typelongnames_aircraft: Per-aircraft type descriptions from
             type-longnames source.
+        db_version: Calendar-based database version string
+            (e.g. ``2026.1.w08_r1``).
 
     Returns:
         BuildResult with path and total aircraft count.
@@ -153,7 +157,7 @@ def build_database(
         sqlite3.OperationalError: When the schema file is missing or invalid.
     """
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = ARTIFACTS_DIR / f"aeromux-db_{__version__}.sqlite"
+    output_path = ARTIFACTS_DIR / f"aeromux-db_{db_version}.sqlite"
 
     if output_path.exists():
         output_path.unlink()
@@ -532,6 +536,7 @@ def build_database(
         build_timestamp = datetime.now(timezone.utc).isoformat()
         metadata = [
             ("build_timestamp", build_timestamp),
+            ("db_version", db_version),
             ("tool_version", __version__),
             ("schema_version", SCHEMA_VERSION),
             ("record_count", str(total_aircraft)),

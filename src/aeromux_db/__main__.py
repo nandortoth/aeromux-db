@@ -22,6 +22,7 @@ import time
 from aeromux_db import __version__
 from aeromux_db.builder import build_database
 from aeromux_db.cli import parse_args
+from aeromux_db.version import get_db_version
 from aeromux_db.downloader import download, extract_tarball, extract_zip, fetch_text
 from aeromux_db.sources.adsbexchange import (
     SOURCE_FILENAME as ADSBX_SOURCE_FILENAME,
@@ -77,7 +78,8 @@ def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
-    logger.debug("Aeromux Database Builder v%s", __version__)
+    db_version = get_db_version(release=args.release)
+    logger.debug("Aeromux Database Builder v%s (db %s)", __version__, db_version)
     start_time = time.monotonic()
 
     try:
@@ -186,6 +188,7 @@ def main() -> None:
             opensky_op_iata,
             opensky_enrichment,
             typelongnames_aircraft,
+            db_version=db_version,
         )
 
         # Summary

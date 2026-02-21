@@ -19,7 +19,7 @@ import json
 import logging
 from pathlib import Path
 
-from aeromux_db.models import Aircraft, AircraftDetails
+from aeromux_db.models import Aircraft, AircraftDetails, AircraftFallbackData
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,6 @@ def parse_aircraft_details(file_path: Path) -> list[AircraftDetails]:
                 AircraftDetails(
                     aircraft_icao_address=record["icao"].upper(),
                     year=_sanitize(record.get("year")),
-                    manufacturer=_sanitize(record.get("manufacturer")),
                     model=_sanitize(record.get("model")),
                     owner_operator=_sanitize(record.get("ownop")),
                     faa_pia=bool(record.get("faa_pia", False)),
@@ -100,3 +99,34 @@ def parse_aircraft_details(file_path: Path) -> list[AircraftDetails]:
             )
     logger.debug("Parsed %d aircraft details from ADS-B Exchange", len(details))
     return details
+
+
+def parse_aircraft_fallbackdata(file_path: Path) -> list[AircraftFallbackData]:
+    """Parse gzipped JSON lines into AircraftFallbackData records.
+
+    Extracts manufacturer names as plain-text fallback data for aircraft
+    that may not have a normalized manufacturer reference.
+
+    Args:
+        file_path: Path to the gzipped JSON file.
+
+    Returns:
+        List of parsed aircraft fallback data records.
+    """
+    fallback = []
+    with gzip.open(file_path, "rt", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            record = json.loads(line)
+            manufacturer = _sanitize(record.get("manufacturer"))
+            if manufacturer:
+                fallback.append(
+                    AircraftFallbackData(
+                        aircraft_icao_address=record["icao"].upper(),
+                        manufacturer=manufacturer,
+                    )
+                )
+    logger.debug("Parsed %d aircraft fallback records from ADS-B Exchange", len(fallback))
+    return fallback

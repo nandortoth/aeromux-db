@@ -101,6 +101,24 @@ def download(
     return DownloadResult(path=dest, cached=False, size_bytes=downloaded)
 
 
+def fetch_text(url: str) -> str:
+    """Download a URL and return its text content.
+
+    Args:
+        url: Remote URL to fetch.
+
+    Returns:
+        Response body as a string.
+
+    Raises:
+        httpx.HTTPStatusError: When the server returns a non-2xx response.
+    """
+    logger.debug("Fetching %s", url)
+    response = httpx.get(url, follow_redirects=True)
+    response.raise_for_status()
+    return response.text
+
+
 def extract_zip(zip_path: Path, dest_dir: Path | None = None) -> ExtractResult:
     """Extract a ZIP archive to a directory.
 

@@ -168,6 +168,9 @@ TYPES_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^TYPES_COUNT=" | cut -d= -f2-)
 OPERATORS_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^OPERATORS_COUNT=" | cut -d= -f2-)
 ADSBX_AIRCRAFT_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^ADSBX_AIRCRAFT_COUNT=" | cut -d= -f2-)
 ADSBX_DETAILS_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^ADSBX_DETAILS_COUNT=" | cut -d= -f2-)
+ADSBX_FALLBACK_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^ADSBX_FALLBACK_COUNT=" | cut -d= -f2-)
+OPENSKY_MANUFACTURERS_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^OPENSKY_MANUFACTURERS_COUNT=" | cut -d= -f2-)
+OPENSKY_ENRICHMENT_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^OPENSKY_ENRICHMENT_COUNT=" | cut -d= -f2-)
 FILE_SIZE=$(echo "$GENERATE_OUTPUT" | grep "^FILE_SIZE=" | cut -d= -f2-)
 
 # Summary
@@ -184,7 +187,10 @@ log "Records:"
 log "  - Aircraft: $AIRCRAFT_COUNT"
 log "  - Types: $TYPES_COUNT"
 log "  - Operators: $OPERATORS_COUNT"
+log "  - Manufacturers: $OPENSKY_MANUFACTURERS_COUNT"
 log "  - Aircraft details: $ADSBX_DETAILS_COUNT"
+log "  - Aircraft fallback: $ADSBX_FALLBACK_COUNT"
+log "  - OpenSky enriched: $OPENSKY_ENRICHMENT_COUNT"
 log ""
 
 ELAPSED=$((SECONDS - START_TIME))

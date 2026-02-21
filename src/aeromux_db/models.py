@@ -32,8 +32,17 @@ class Operator:
 
     operator_icao: str
     operator_name: str | None = None
+    operator_iata: str | None = None
     operator_country: str | None = None
     operator_callsign: str | None = None
+
+
+@dataclass
+class Manufacturer:
+    """Aircraft manufacturer identified by ICAO code."""
+
+    manufacturer_icao: str
+    manufacturer_name: str | None = None
 
 
 @dataclass
@@ -42,7 +51,11 @@ class Aircraft:
 
     aircraft_icao_address: str
     aircraft_registration: str | None = None
+    aircraft_country: str | None = None
+    aircraft_serial_number: str | None = None
     aircraft_type_code: str | None = None
+    aircraft_manufacturer_icao: str | None = None
+    aircraft_operator_icao: str | None = None
 
 
 @dataclass
@@ -51,9 +64,33 @@ class AircraftDetails:
 
     aircraft_icao_address: str
     year: str | None = None
-    manufacturer: str | None = None
     model: str | None = None
     owner_operator: str | None = None
     faa_pia: bool = False
     faa_ladd: bool = False
     military: bool = False
+
+
+@dataclass
+class AircraftFallbackData:
+    """Fallback plain-text manufacturer and operator for an aircraft."""
+
+    aircraft_icao_address: str
+    manufacturer: str | None = None
+    operator: str | None = None
+
+
+@dataclass
+class OpenSkyAircraftData:
+    """Enrichment data for an aircraft from OpenSky Network."""
+
+    icao24: str
+    registration: str | None = None
+    country: str | None = None
+    serial_number: str | None = None
+    model: str | None = None
+    manufacturer_icao: str | None = None
+    manufacturer_name: str | None = None
+    operator_icao: str | None = None
+    operator: str | None = None
+    owner: str | None = None

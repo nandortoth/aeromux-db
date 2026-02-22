@@ -87,10 +87,7 @@ def main() -> None:
         logger.info("Step 1/11: Downloading Mictronics database...")
         result = download(SOURCE_URL, SOURCE_FILENAME)
         file_size_str = _format_file_size(result.size_bytes)
-        if result.cached:
-            logger.info("  Using cached file (%s)", file_size_str)
-        else:
-            logger.info("  Downloaded %s", file_size_str)
+        logger.info("  Downloaded %s", file_size_str)
 
         # Step 2: Extract Mictronics
         logger.info("Step 2/11: Extracting Mictronics archive...")
@@ -113,10 +110,7 @@ def main() -> None:
         logger.info("Step 4/11: Downloading ADS-B Exchange database...")
         adsbx_result = download(ADSBX_SOURCE_URL, ADSBX_SOURCE_FILENAME)
         adsbx_size_str = _format_file_size(adsbx_result.size_bytes)
-        if adsbx_result.cached:
-            logger.info("  Using cached file (%s)", adsbx_size_str)
-        else:
-            logger.info("  Downloaded %s", adsbx_size_str)
+        logger.info("  Downloaded %s", adsbx_size_str)
 
         # Step 5: Parse ADS-B Exchange
         logger.info("Step 5/11: Parsing ADS-B Exchange data...")
@@ -139,10 +133,7 @@ def main() -> None:
         opensky_url = OPENSKY_DOWNLOAD_BASE_URL + opensky_filename
         opensky_result = download(opensky_url, opensky_filename)
         opensky_size_str = _format_file_size(opensky_result.size_bytes)
-        if opensky_result.cached:
-            logger.info("  Using cached file (%s)", opensky_size_str)
-        else:
-            logger.info("  Downloaded %s", opensky_size_str)
+        logger.info("  Downloaded %s", opensky_size_str)
 
         # Step 7: Parse OpenSky Network
         logger.info("Step 7/11: Parsing OpenSky Network data...")
@@ -160,10 +151,7 @@ def main() -> None:
         logger.info("Step 8/11: Downloading type-longnames database...")
         typelongnames_result = download(TYPELONGNAMES_SOURCE_URL, TYPELONGNAMES_SOURCE_FILENAME)
         typelongnames_size_str = _format_file_size(typelongnames_result.size_bytes)
-        if typelongnames_result.cached:
-            logger.info("  Using cached file (%s)", typelongnames_size_str)
-        else:
-            logger.info("  Downloaded %s", typelongnames_size_str)
+        logger.info("  Downloaded %s", typelongnames_size_str)
 
         # Step 9: Extract type-longnames
         logger.info("Step 9/11: Extracting type-longnames archive...")

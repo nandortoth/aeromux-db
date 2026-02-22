@@ -13,8 +13,6 @@ Aeromux Database Builder generates a SQLite database from external aircraft data
 
 - **Fast Local Lookups** — Provides Aeromux with aircraft metadata keyed by ICAO 24-bit address for instant enrichment of decoded messages.
 
-- **Download Caching** — Downloaded data sources are cached for 1 hour in the `temp/` directory, so repeated builds during development avoid unnecessary network requests.
-
 - **Reproducible Builds** — Uses `uv` for deterministic dependency resolution with a lockfile, ensuring consistent builds across environments.
 
 - **Normalized Schema** — The database uses separate tables for aircraft, types, and operators, linked by foreign keys, with build metadata for version tracking.
@@ -100,7 +98,7 @@ The full SQL schema is defined in [`schema/schema.sql`](schema/schema.sql) and d
 | [OpenSky Network Aircraft Database](https://opensky-network.org/datasets/metadata/) | Manufacturer records, operator IATA codes, and aircraft enrichment data (country, serial number, owner). Distributed as a monthly CSV file. |
 | [Type-Longnames (wiedehopf/chrisglobe)](https://github.com/wiedehopf/type-longnames-chrisglobe) | Per-aircraft type descriptions (e.g. `Boeing C-40A Clipper`). Distributed as a tarball of CSV files, one per type code. |
 
-The tool downloads each data source to `temp/`, extracts and parses the data, and inserts the records into the database. Sources less than 1 hour old are reused from cache.
+The tool downloads each data source to `temp/`, extracts and parses the data, and inserts the records into the database.
 
 ## Project Structure
 
@@ -115,7 +113,7 @@ aeromux-db/
 │       ├── __init__.py    # Package version
 │       ├── __main__.py    # Entry point and pipeline orchestration
 │       ├── cli.py         # Command-line argument parsing
-│       ├── downloader.py  # File download with caching and ZIP extraction
+│       ├── downloader.py  # File download and archive extraction
 │       ├── models.py      # Data models (Aircraft, AircraftType, Operator)
 │       ├── version.py     # Calendar-based database version computation
 │       ├── builder.py     # SQLite database construction
@@ -128,7 +126,7 @@ aeromux-db/
 │   ├── schema.sql         # Authoritative SQL schema (single source of truth)
 │   └── schema.md          # Human-readable schema documentation
 ├── artifacts/             # Build output (generated SQLite database)
-├── temp/                  # Downloaded and extracted data source files (cached)
+├── temp/                  # Downloaded and extracted data source files
 └── tests/                 # Test suite
 ```
 

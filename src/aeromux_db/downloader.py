@@ -16,7 +16,6 @@
 
 import logging
 import tarfile
-import time
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -25,8 +24,6 @@ from pathlib import Path
 import httpx
 
 logger = logging.getLogger(__name__)
-
-CACHE_MAX_AGE_SECONDS = 3600  # 1 hour
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TEMP_DIR = PROJECT_ROOT / "temp"
@@ -37,7 +34,6 @@ class DownloadResult:
     """Result of a download operation."""
 
     path: Path
-    cached: bool
     size_bytes: int
 
 
@@ -49,20 +45,12 @@ class ExtractResult:
     file_count: int
 
 
-def _is_cached(file_path: Path) -> bool:
-    """Check if a cached file exists and is less than 1 hour old."""
-    if not file_path.exists():
-        return False
-    age = time.time() - file_path.stat().st_mtime
-    return age < CACHE_MAX_AGE_SECONDS
-
-
 def download(
     url: str,
     filename: str,
     progress_callback: Callable[[int, int | None], None] | None = None,
 ) -> DownloadResult:
-    """Download a file to the temp directory, using cache if fresh.
+    """Download a file to the temp directory.
 
     Args:
         url: Remote URL of the data source archive.
@@ -71,17 +59,13 @@ def download(
             after each chunk.
 
     Returns:
-        DownloadResult with path, cache status, and file size.
+        DownloadResult with path and file size.
 
     Raises:
         httpx.HTTPStatusError: When the server returns a non-2xx response.
     """
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
     dest = TEMP_DIR / filename
-
-    if _is_cached(dest):
-        logger.debug("Using cached file: %s", dest)
-        return DownloadResult(path=dest, cached=True, size_bytes=dest.stat().st_size)
 
     logger.debug("Downloading %s", url)
 
@@ -99,7 +83,7 @@ def download(
                     progress_callback(downloaded, total_bytes)
 
     logger.debug("Downloaded %s (%d bytes)", filename, downloaded)
-    return DownloadResult(path=dest, cached=False, size_bytes=downloaded)
+    return DownloadResult(path=dest, size_bytes=downloaded)
 
 
 def fetch_text(url: str) -> str:

@@ -221,14 +221,6 @@ Example: `2026.1.w08_r1` — first release of week 8 in Q1 2026.
 
 The version is computed automatically at build time from the current UTC date. Use `--release N` to specify the release number when building multiple times in the same week.
 
-## Download Caching
-
-Downloaded data sources are cached in the `temp/` directory:
-
-- If a previously downloaded file exists and is **less than 1 hour old**, it is reused.
-- Otherwise, the latest version is downloaded, replacing the cached file.
-- The `temp/` directory contains a `.gitkeep` so the directory is tracked, but cached files are not committed.
-
 ## Error Handling
 
 The builder follows an **abort-on-failure** strategy — partial databases are never produced:

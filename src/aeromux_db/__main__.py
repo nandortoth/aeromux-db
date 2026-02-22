@@ -17,7 +17,9 @@
 import logging
 import os
 import sys
+import tempfile
 import time
+from pathlib import Path
 
 from aeromux_db import __version__
 from aeromux_db.builder import build_database
@@ -128,126 +130,129 @@ def main() -> None:
     start_time = time.monotonic()
 
     try:
-        # Step 1: Download Mictronics
-        logger.info("Step 1/11: Downloading Mictronics database...")
-        result = download(SOURCE_URL, SOURCE_FILENAME, progress_callback=_make_progress_callback())
-        _clear_progress_line()
-        logger.info("  Downloaded %s", _format_file_size(result.size_bytes))
+        with tempfile.TemporaryDirectory(prefix="aeromux-db_") as tmp:
+            temp_dir = Path(tmp)
 
-        # Step 2: Extract Mictronics
-        logger.info("Step 2/11: Extracting Mictronics archive...")
-        extract = extract_zip(result.path)
-        logger.info("  Extracted %d files", extract.file_count)
+            # Step 1: Download Mictronics
+            logger.info("Step 1/11: Downloading Mictronics database...")
+            result = download(SOURCE_URL, SOURCE_FILENAME, temp_dir, progress_callback=_make_progress_callback())
+            _clear_progress_line()
+            logger.info("  Downloaded %s", _format_file_size(result.size_bytes))
 
-        # Step 3: Parse Mictronics
-        logger.info("Step 3/11: Parsing Mictronics data...")
-        logger.info("  Parsing types...")
-        types = parse_types(extract.path)
-        logger.info("  Parsed %s types", f"{len(types):,}")
-        logger.info("  Parsing operators...")
-        operators = parse_operators(extract.path)
-        logger.info("  Parsed %s operators", f"{len(operators):,}")
-        logger.info("  Parsing aircraft...")
-        aircraft = parse_aircraft(extract.path)
-        logger.info("  Parsed %s aircraft", f"{len(aircraft):,}")
+            # Step 2: Extract Mictronics
+            logger.info("Step 2/11: Extracting Mictronics archive...")
+            extract = extract_zip(result.path)
+            logger.info("  Extracted %d files", extract.file_count)
 
-        # Step 4: Download ADS-B Exchange
-        logger.info("Step 4/11: Downloading ADS-B Exchange database...")
-        adsbx_result = download(ADSBX_SOURCE_URL, ADSBX_SOURCE_FILENAME, progress_callback=_make_progress_callback())
-        _clear_progress_line()
-        logger.info("  Downloaded %s", _format_file_size(adsbx_result.size_bytes))
+            # Step 3: Parse Mictronics
+            logger.info("Step 3/11: Parsing Mictronics data...")
+            logger.info("  Parsing types...")
+            types = parse_types(extract.path)
+            logger.info("  Parsed %s types", f"{len(types):,}")
+            logger.info("  Parsing operators...")
+            operators = parse_operators(extract.path)
+            logger.info("  Parsed %s operators", f"{len(operators):,}")
+            logger.info("  Parsing aircraft...")
+            aircraft = parse_aircraft(extract.path)
+            logger.info("  Parsed %s aircraft", f"{len(aircraft):,}")
 
-        # Step 5: Parse ADS-B Exchange
-        logger.info("Step 5/11: Parsing ADS-B Exchange data...")
-        logger.info("  Parsing aircraft...")
-        adsbx_aircraft = adsbx_parse_aircraft(adsbx_result.path)
-        logger.info("  Parsed %s aircraft", f"{len(adsbx_aircraft):,}")
-        logger.info("  Parsing aircraft details...")
-        adsbx_details = adsbx_parse_aircraft_details(adsbx_result.path)
-        logger.info("  Parsed %s aircraft details", f"{len(adsbx_details):,}")
-        logger.info("  Parsing aircraft fallback data...")
-        adsbx_fallback = adsbx_parse_aircraft_fallbackdata(adsbx_result.path)
-        logger.info("  Parsed %s aircraft fallback records", f"{len(adsbx_fallback):,}")
+            # Step 4: Download ADS-B Exchange
+            logger.info("Step 4/11: Downloading ADS-B Exchange database...")
+            adsbx_result = download(ADSBX_SOURCE_URL, ADSBX_SOURCE_FILENAME, temp_dir, progress_callback=_make_progress_callback())
+            _clear_progress_line()
+            logger.info("  Downloaded %s", _format_file_size(adsbx_result.size_bytes))
 
-        # Step 6: Download OpenSky Network
-        logger.info("Step 6/11: Downloading OpenSky Network database...")
-        logger.info("  Resolving latest filename...")
-        listing_xml = fetch_text(OPENSKY_S3_LISTING_URL)
-        opensky_filename = opensky_resolve_latest_filename(listing_xml)
-        logger.info("  Latest file: %s", opensky_filename)
-        opensky_url = OPENSKY_DOWNLOAD_BASE_URL + opensky_filename
-        opensky_result = download(opensky_url, opensky_filename, progress_callback=_make_progress_callback())
-        _clear_progress_line()
-        logger.info("  Downloaded %s", _format_file_size(opensky_result.size_bytes))
+            # Step 5: Parse ADS-B Exchange
+            logger.info("Step 5/11: Parsing ADS-B Exchange data...")
+            logger.info("  Parsing aircraft...")
+            adsbx_aircraft = adsbx_parse_aircraft(adsbx_result.path)
+            logger.info("  Parsed %s aircraft", f"{len(adsbx_aircraft):,}")
+            logger.info("  Parsing aircraft details...")
+            adsbx_details = adsbx_parse_aircraft_details(adsbx_result.path)
+            logger.info("  Parsed %s aircraft details", f"{len(adsbx_details):,}")
+            logger.info("  Parsing aircraft fallback data...")
+            adsbx_fallback = adsbx_parse_aircraft_fallbackdata(adsbx_result.path)
+            logger.info("  Parsed %s aircraft fallback records", f"{len(adsbx_fallback):,}")
 
-        # Step 7: Parse OpenSky Network
-        logger.info("Step 7/11: Parsing OpenSky Network data...")
-        logger.info("  Parsing manufacturers...")
-        opensky_manufacturers = opensky_parse_manufacturers(opensky_result.path)
-        logger.info("  Parsed %s manufacturers", f"{len(opensky_manufacturers):,}")
-        logger.info("  Parsing operator IATA mappings...")
-        opensky_op_iata = opensky_parse_operator_iata(opensky_result.path)
-        logger.info("  Parsed %s operator IATA mappings", f"{len(opensky_op_iata):,}")
-        logger.info("  Parsing aircraft enrichment data...")
-        opensky_enrichment = opensky_parse_aircraft_enrichment(opensky_result.path)
-        logger.info("  Parsed %s aircraft enrichment records", f"{len(opensky_enrichment):,}")
+            # Step 6: Download OpenSky Network
+            logger.info("Step 6/11: Downloading OpenSky Network database...")
+            logger.info("  Resolving latest filename...")
+            listing_xml = fetch_text(OPENSKY_S3_LISTING_URL)
+            opensky_filename = opensky_resolve_latest_filename(listing_xml)
+            logger.info("  Latest file: %s", opensky_filename)
+            opensky_url = OPENSKY_DOWNLOAD_BASE_URL + opensky_filename
+            opensky_result = download(opensky_url, opensky_filename, temp_dir, progress_callback=_make_progress_callback())
+            _clear_progress_line()
+            logger.info("  Downloaded %s", _format_file_size(opensky_result.size_bytes))
 
-        # Step 8: Download type-longnames
-        logger.info("Step 8/11: Downloading type-longnames database...")
-        typelongnames_result = download(TYPELONGNAMES_SOURCE_URL, TYPELONGNAMES_SOURCE_FILENAME, progress_callback=_make_progress_callback())
-        _clear_progress_line()
-        logger.info("  Downloaded %s", _format_file_size(typelongnames_result.size_bytes))
+            # Step 7: Parse OpenSky Network
+            logger.info("Step 7/11: Parsing OpenSky Network data...")
+            logger.info("  Parsing manufacturers...")
+            opensky_manufacturers = opensky_parse_manufacturers(opensky_result.path)
+            logger.info("  Parsed %s manufacturers", f"{len(opensky_manufacturers):,}")
+            logger.info("  Parsing operator IATA mappings...")
+            opensky_op_iata = opensky_parse_operator_iata(opensky_result.path)
+            logger.info("  Parsed %s operator IATA mappings", f"{len(opensky_op_iata):,}")
+            logger.info("  Parsing aircraft enrichment data...")
+            opensky_enrichment = opensky_parse_aircraft_enrichment(opensky_result.path)
+            logger.info("  Parsed %s aircraft enrichment records", f"{len(opensky_enrichment):,}")
 
-        # Step 9: Extract type-longnames
-        logger.info("Step 9/11: Extracting type-longnames archive...")
-        typelongnames_extract = extract_tarball(typelongnames_result.path)
-        logger.info("  Extracted %d files", typelongnames_extract.file_count)
+            # Step 8: Download type-longnames
+            logger.info("Step 8/11: Downloading type-longnames database...")
+            typelongnames_result = download(TYPELONGNAMES_SOURCE_URL, TYPELONGNAMES_SOURCE_FILENAME, temp_dir, progress_callback=_make_progress_callback())
+            _clear_progress_line()
+            logger.info("  Downloaded %s", _format_file_size(typelongnames_result.size_bytes))
 
-        # Step 10: Parse type-longnames
-        logger.info("Step 10/11: Parsing type-longnames data...")
-        typelongnames_aircraft = typelongnames_parse_aircraft(typelongnames_extract.path)
-        logger.info("  Parsed %s aircraft", f"{len(typelongnames_aircraft):,}")
+            # Step 9: Extract type-longnames
+            logger.info("Step 9/11: Extracting type-longnames archive...")
+            typelongnames_extract = extract_tarball(typelongnames_result.path)
+            logger.info("  Extracted %d files", typelongnames_extract.file_count)
 
-        # Step 11: Build database
-        logger.info("Step 11/11: Building database...")
-        result = build_database(
-            aircraft,
-            types,
-            operators,
-            adsbx_aircraft,
-            adsbx_details,
-            adsbx_fallback,
-            opensky_manufacturers,
-            opensky_op_iata,
-            opensky_enrichment,
-            typelongnames_aircraft,
-            db_version=db_version,
-        )
+            # Step 10: Parse type-longnames
+            logger.info("Step 10/11: Parsing type-longnames data...")
+            typelongnames_aircraft = typelongnames_parse_aircraft(typelongnames_extract.path)
+            logger.info("  Parsed %s aircraft", f"{len(typelongnames_aircraft):,}")
 
-        # Summary
-        elapsed = time.monotonic() - start_time
-        logger.info("Build complete! (%.1fs)", elapsed)
-        logger.debug(
-            "Output: %s | Aircraft: %s | Types: %s | Operators: %s",
-            result.path,
-            f"{result.total_aircraft:,}",
-            f"{len(types):,}",
-            f"{len(operators):,}",
-        )
+            # Step 11: Build database
+            logger.info("Step 11/11: Building database...")
+            result = build_database(
+                aircraft,
+                types,
+                operators,
+                adsbx_aircraft,
+                adsbx_details,
+                adsbx_fallback,
+                opensky_manufacturers,
+                opensky_op_iata,
+                opensky_enrichment,
+                typelongnames_aircraft,
+                db_version=db_version,
+            )
 
-        # Print structured summary to stdout for shell integration
-        output_file_size = _format_file_size(os.path.getsize(result.path))
-        print(f"OUTPUT_FILE={result.path}")
-        print(f"AIRCRAFT_COUNT={result.total_aircraft:,}")
-        print(f"TYPES_COUNT={len(types):,}")
-        print(f"OPERATORS_COUNT={len(operators):,}")
-        print(f"ADSBX_AIRCRAFT_COUNT={len(adsbx_aircraft):,}")
-        print(f"ADSBX_DETAILS_COUNT={len(adsbx_details):,}")
-        print(f"ADSBX_FALLBACK_COUNT={len(adsbx_fallback):,}")
-        print(f"OPENSKY_MANUFACTURERS_COUNT={len(opensky_manufacturers):,}")
-        print(f"OPENSKY_ENRICHMENT_COUNT={len(opensky_enrichment):,}")
-        print(f"TYPELONGNAMES_AIRCRAFT_COUNT={len(typelongnames_aircraft):,}")
-        print(f"FILE_SIZE={output_file_size}")
+            # Summary
+            elapsed = time.monotonic() - start_time
+            logger.info("Build complete! (%.1fs)", elapsed)
+            logger.debug(
+                "Output: %s | Aircraft: %s | Types: %s | Operators: %s",
+                result.path,
+                f"{result.total_aircraft:,}",
+                f"{len(types):,}",
+                f"{len(operators):,}",
+            )
+
+            # Print structured summary to stdout for shell integration
+            output_file_size = _format_file_size(os.path.getsize(result.path))
+            print(f"OUTPUT_FILE={result.path}")
+            print(f"AIRCRAFT_COUNT={result.total_aircraft:,}")
+            print(f"TYPES_COUNT={len(types):,}")
+            print(f"OPERATORS_COUNT={len(operators):,}")
+            print(f"ADSBX_AIRCRAFT_COUNT={len(adsbx_aircraft):,}")
+            print(f"ADSBX_DETAILS_COUNT={len(adsbx_details):,}")
+            print(f"ADSBX_FALLBACK_COUNT={len(adsbx_fallback):,}")
+            print(f"OPENSKY_MANUFACTURERS_COUNT={len(opensky_manufacturers):,}")
+            print(f"OPENSKY_ENRICHMENT_COUNT={len(opensky_enrichment):,}")
+            print(f"TYPELONGNAMES_AIRCRAFT_COUNT={len(typelongnames_aircraft):,}")
+            print(f"FILE_SIZE={output_file_size}")
     except KeyboardInterrupt:
         _clear_progress_line()
         logger.info("Build interrupted")

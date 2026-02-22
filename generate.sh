@@ -53,7 +53,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --release N    Release number within the current week (default: 1)"
             echo ""
             echo "Examples:"
-            echo "  ./generate.sh                # Generate database with full output"
+            echo "  ./generate.sh                 # Generate database with full output"
             echo "  ./generate.sh --silent        # Generate database silently"
             echo "  ./generate.sh --release 2     # Generate second release of the week"
             exit 1
@@ -237,6 +237,5 @@ log ""
 CURRENT_STEP="Cleanup"
 log "Cleaning up..."
 rm -rf "$PROJECT_ROOT/.venv"
-find "$PROJECT_ROOT/temp" -mindepth 1 ! -name '.gitkeep' -exec rm -rf {} + 2>/dev/null || true
 log "✓ Cleanup complete"
 log ""

@@ -25,9 +25,6 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-TEMP_DIR = PROJECT_ROOT / "temp"
-
 
 @dataclass
 class DownloadResult:
@@ -48,13 +45,15 @@ class ExtractResult:
 def download(
     url: str,
     filename: str,
+    dest_dir: Path,
     progress_callback: Callable[[int, int | None], None] | None = None,
 ) -> DownloadResult:
-    """Download a file to the temp directory.
+    """Download a file to the specified directory.
 
     Args:
         url: Remote URL of the data source archive.
-        filename: Local filename to save under in the temp directory.
+        filename: Local filename to save under in the destination directory.
+        dest_dir: Directory to save the downloaded file in.
         progress_callback: Optional callback invoked with (downloaded_bytes, total_bytes)
             after each chunk.
 
@@ -64,8 +63,7 @@ def download(
     Raises:
         httpx.HTTPStatusError: When the server returns a non-2xx response.
     """
-    TEMP_DIR.mkdir(parents=True, exist_ok=True)
-    dest = TEMP_DIR / filename
+    dest = dest_dir / filename
 
     logger.debug("Downloading %s", url)
 

@@ -98,7 +98,7 @@ The full SQL schema is defined in [`schema/schema.sql`](schema/schema.sql) and d
 | [OpenSky Network Aircraft Database](https://opensky-network.org/datasets/metadata/) | Manufacturer records, operator IATA codes, and aircraft enrichment data (country, serial number, owner). Distributed as a monthly CSV file. |
 | [Type-Longnames (wiedehopf/chrisglobe)](https://github.com/wiedehopf/type-longnames-chrisglobe) | Per-aircraft type descriptions (e.g. `Boeing C-40A Clipper`). Distributed as a tarball of CSV files, one per type code. |
 
-The tool downloads each data source to `temp/`, extracts and parses the data, and inserts the records into the database.
+The tool downloads each data source, extracts and parses the data, and inserts the records into the database. Downloaded files are stored in a temporary directory that is automatically cleaned up after the build.
 
 ## Project Structure
 
@@ -126,7 +126,6 @@ aeromux-db/
 │   ├── schema.sql         # Authoritative SQL schema (single source of truth)
 │   └── schema.md          # Human-readable schema documentation
 ├── artifacts/             # Build output (generated SQLite database)
-├── temp/                  # Downloaded and extracted data source files
 └── tests/                 # Test suite
 ```
 

@@ -120,20 +120,41 @@ mkfifo "$STDERR_FIFO"
 trap "rm -f '$SUMMARY_FILE' '$STDERR_FILE' '$STDERR_FIFO'" EXIT
 
 # Background reader: display stderr log lines as indented progress in real time
-(while IFS= read -r line; do
+(LAST_WAS_PROGRESS=false
+while IFS= read -r line; do
     echo "$line" >> "$STDERR_FILE"
     if [ "$SILENT" != true ]; then
         # Strip timestamp and log prefix to show clean progress
-        msg=$(echo "$line" | sed 's/^[0-9-]* [0-9:,]*[[:space:]]*\[[A-Z]*\][[:space:]]*[^:]*:[[:space:]]*//')
-        if echo "$msg" | grep -q '^Step [0-9]'; then
-            # Step header — display prominently
-            echo "  → $msg"
-        elif echo "$msg" | grep -q '^Build complete'; then
-            # Final summary — display prominently
-            echo "  → $msg"
+        msg=$(echo "$line" | sed 's/^[0-9-]* [0-9:,]*[[:space:]]*\[[A-Z]*\][[:space:]]*[^:]*: //')
+        if echo "$msg" | grep -q '^PROGRESS: '; then
+            # Download progress — overwrite in place, cursor on next line
+            progress_text=$(echo "$msg" | sed 's/^PROGRESS: //')
+            if [ "$LAST_WAS_PROGRESS" = true ]; then
+                printf "\033[A\r      %-60s\n" "$progress_text"
+            else
+                printf "\r      %-60s\n" "$progress_text"
+            fi
+            LAST_WAS_PROGRESS=true
         else
-            # Sub-step detail — indent further
-            echo "      $msg"
+            if [ "$LAST_WAS_PROGRESS" = true ]; then
+                # Move up and clear the progress line before printing the next line
+                printf "\033[A\r%-66s\r" ""
+                LAST_WAS_PROGRESS=false
+            fi
+            if echo "$msg" | grep -q '^Step [0-9]'; then
+                # Step header — display prominently
+                echo "  → $msg"
+            elif echo "$msg" | grep -q '^Build complete'; then
+                # Final summary — display prominently
+                echo "  → $msg"
+            elif echo "$msg" | grep -q '^Build interrupted'; then
+                # Interrupted by user
+                echo ""
+                echo "✗ $msg"
+            else
+                # Sub-step detail — indent further
+                echo "    $msg"
+            fi
         fi
     fi
 done < "$STDERR_FIFO") &
@@ -150,6 +171,10 @@ GENERATE_EXIT=$?
 wait "$READER_PID"
 
 if [ "$GENERATE_EXIT" -ne 0 ]; then
+    if [ "$GENERATE_EXIT" -eq 130 ]; then
+        # Interrupted by user — already displayed by FIFO reader
+        exit 130
+    fi
     [ "$SILENT" = true ] || echo "✗ $CURRENT_STEP failed"
     echo ""
     echo "================================================"

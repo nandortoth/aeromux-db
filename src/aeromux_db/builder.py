@@ -520,13 +520,10 @@ def build_database(
                 writer.writerow(["icao_address", "mictronics_reg", "adsbx_reg", "opensky_reg", "typelongnames_reg", "selected_source", "reason"])
                 for icao, (mic_reg, adsbx_reg, osky_reg, tl_reg, sel_src, reason) in resolved.items():
                     writer.writerow([icao, mic_reg or "", adsbx_reg or "", osky_reg or "", tl_reg or "", sel_src, reason])
-            logger.info(
-                "  Registration mismatches: %s total (adsbx: %s, opensky: %s, typelongnames: %s)",
-                f"{len(reg_mismatches):,}",
-                f"{adsbx_mismatch_count:,}",
-                f"{opensky_mismatch_count:,}",
-                f"{typelongnames_mismatch_count:,}",
-            )
+            logger.info("  Registration mismatches: %s total", f"{len(reg_mismatches):,}")
+            logger.info("    ADS-B Exchange: %s", f"{adsbx_mismatch_count:,}")
+            logger.info("    OpenSky: %s", f"{opensky_mismatch_count:,}")
+            logger.info("    Type-longnames: %s", f"{typelongnames_mismatch_count:,}")
             logger.info(
                 "    Wrote to %s",
                 mismatch_path.relative_to(PROJECT_ROOT),

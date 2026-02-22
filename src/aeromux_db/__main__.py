@@ -54,6 +54,10 @@ from aeromux_db.sources.typelongnames import (
 
 logger = logging.getLogger("aeromux_db")
 
+_STDERR_IS_TTY = False
+
+PROGRESS_UPDATE_INTERVAL = 0.5  # seconds
+
 
 def _format_file_size(size_bytes: int) -> str:
     """Format file size in human-readable form."""
@@ -65,8 +69,49 @@ def _format_file_size(size_bytes: int) -> str:
         return f"{size_bytes / (1024 * 1024):.1f} MB"
 
 
+def _make_progress_callback():
+    """Create a download progress callback that updates in-place on stderr."""
+    last_update = 0.0
+    has_printed = False
+
+    def callback(downloaded: int, total: int | None) -> None:
+        nonlocal last_update, has_printed
+        now = time.monotonic()
+        if now - last_update < PROGRESS_UPDATE_INTERVAL:
+            return
+        last_update = now
+
+        dl_str = _format_file_size(downloaded)
+        if total:
+            total_str = _format_file_size(total)
+            pct = downloaded / total * 100
+            msg = f"Downloading {dl_str}/{total_str} ({pct:.1f}%)..."
+        else:
+            msg = f"Downloading {dl_str}..."
+
+        if _STDERR_IS_TTY:
+            prefix = "\033[A\r" if has_printed else "\r"
+            sys.stderr.write(f"{prefix}  {msg: <60}\n")
+            sys.stderr.flush()
+            has_printed = True
+        else:
+            logger.info("PROGRESS: %s", msg)
+
+    return callback
+
+
+def _clear_progress_line() -> None:
+    """Clear the in-place progress line from stderr."""
+    if _STDERR_IS_TTY:
+        sys.stderr.write(f"\033[A\r{'': <64}\r")
+        sys.stderr.flush()
+
+
 def main() -> None:
     """Run the full database build pipeline: download, extract, parse, and build."""
+    global _STDERR_IS_TTY
+    _STDERR_IS_TTY = sys.stderr.isatty()
+
     args = parse_args()
 
     log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -85,9 +130,9 @@ def main() -> None:
     try:
         # Step 1: Download Mictronics
         logger.info("Step 1/11: Downloading Mictronics database...")
-        result = download(SOURCE_URL, SOURCE_FILENAME)
-        file_size_str = _format_file_size(result.size_bytes)
-        logger.info("  Downloaded %s", file_size_str)
+        result = download(SOURCE_URL, SOURCE_FILENAME, progress_callback=_make_progress_callback())
+        _clear_progress_line()
+        logger.info("  Downloaded %s", _format_file_size(result.size_bytes))
 
         # Step 2: Extract Mictronics
         logger.info("Step 2/11: Extracting Mictronics archive...")
@@ -108,9 +153,9 @@ def main() -> None:
 
         # Step 4: Download ADS-B Exchange
         logger.info("Step 4/11: Downloading ADS-B Exchange database...")
-        adsbx_result = download(ADSBX_SOURCE_URL, ADSBX_SOURCE_FILENAME)
-        adsbx_size_str = _format_file_size(adsbx_result.size_bytes)
-        logger.info("  Downloaded %s", adsbx_size_str)
+        adsbx_result = download(ADSBX_SOURCE_URL, ADSBX_SOURCE_FILENAME, progress_callback=_make_progress_callback())
+        _clear_progress_line()
+        logger.info("  Downloaded %s", _format_file_size(adsbx_result.size_bytes))
 
         # Step 5: Parse ADS-B Exchange
         logger.info("Step 5/11: Parsing ADS-B Exchange data...")
@@ -131,9 +176,9 @@ def main() -> None:
         opensky_filename = opensky_resolve_latest_filename(listing_xml)
         logger.info("  Latest file: %s", opensky_filename)
         opensky_url = OPENSKY_DOWNLOAD_BASE_URL + opensky_filename
-        opensky_result = download(opensky_url, opensky_filename)
-        opensky_size_str = _format_file_size(opensky_result.size_bytes)
-        logger.info("  Downloaded %s", opensky_size_str)
+        opensky_result = download(opensky_url, opensky_filename, progress_callback=_make_progress_callback())
+        _clear_progress_line()
+        logger.info("  Downloaded %s", _format_file_size(opensky_result.size_bytes))
 
         # Step 7: Parse OpenSky Network
         logger.info("Step 7/11: Parsing OpenSky Network data...")
@@ -149,9 +194,9 @@ def main() -> None:
 
         # Step 8: Download type-longnames
         logger.info("Step 8/11: Downloading type-longnames database...")
-        typelongnames_result = download(TYPELONGNAMES_SOURCE_URL, TYPELONGNAMES_SOURCE_FILENAME)
-        typelongnames_size_str = _format_file_size(typelongnames_result.size_bytes)
-        logger.info("  Downloaded %s", typelongnames_size_str)
+        typelongnames_result = download(TYPELONGNAMES_SOURCE_URL, TYPELONGNAMES_SOURCE_FILENAME, progress_callback=_make_progress_callback())
+        _clear_progress_line()
+        logger.info("  Downloaded %s", _format_file_size(typelongnames_result.size_bytes))
 
         # Step 9: Extract type-longnames
         logger.info("Step 9/11: Extracting type-longnames archive...")
@@ -203,6 +248,10 @@ def main() -> None:
         print(f"OPENSKY_ENRICHMENT_COUNT={len(opensky_enrichment):,}")
         print(f"TYPELONGNAMES_AIRCRAFT_COUNT={len(typelongnames_aircraft):,}")
         print(f"FILE_SIZE={output_file_size}")
+    except KeyboardInterrupt:
+        _clear_progress_line()
+        logger.info("Build interrupted")
+        sys.exit(130)
     except Exception:
         logger.exception("Build failed")
         sys.exit(1)

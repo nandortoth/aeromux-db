@@ -2,7 +2,7 @@
 name = "aeromux-db"
 version = "1.0.0"
 description = "Aeromux Database Builder — generates a SQLite database from external aircraft data sources."
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 license = "GPL-3.0-or-later"
 authors = [
     { name = "Nandor Toth", email = "dev@nandortoth.com" },

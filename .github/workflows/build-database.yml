@@ -1,0 +1,75 @@
+name: Build Database
+
+on:
+  schedule:
+    # Every Sunday at 06:00 UTC
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Release number within the current week"
+        required: false
+        default: "1"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Build database
+        id: build
+        run: |
+          EXTRA_ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.release }}" ]; then
+            EXTRA_ARGS="--release ${{ inputs.release }}"
+          fi
+
+          uv run aeromux-db $EXTRA_ARGS > build_summary.txt
+
+          # Parse summary values
+          DB_VERSION=$(grep "^DB_VERSION=" build_summary.txt | cut -d= -f2-)
+          OUTPUT_FILE=$(grep "^OUTPUT_FILE=" build_summary.txt | cut -d= -f2-)
+          AIRCRAFT_COUNT=$(grep "^AIRCRAFT_COUNT=" build_summary.txt | cut -d= -f2-)
+          FILE_SIZE=$(grep "^FILE_SIZE=" build_summary.txt | cut -d= -f2-)
+
+          echo "db_version=$DB_VERSION" >> "$GITHUB_OUTPUT"
+          echo "output_file=$OUTPUT_FILE" >> "$GITHUB_OUTPUT"
+          echo "aircraft_count=$AIRCRAFT_COUNT" >> "$GITHUB_OUTPUT"
+          echo "file_size=$FILE_SIZE" >> "$GITHUB_OUTPUT"
+
+      - name: Check for existing release
+        id: check
+        run: |
+          if gh release view "${{ steps.build.outputs.db_version }}" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release ${{ steps.build.outputs.db_version }} already exists, skipping."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          gh release create "${{ steps.build.outputs.db_version }}" \
+            "${{ steps.build.outputs.output_file }}" \
+            --title "aeromux-db ${{ steps.build.outputs.db_version }}" \
+            --body "$(cat <<'EOF'
+          ## Database Build
+
+          - **Aircraft:** ${{ steps.build.outputs.aircraft_count }}
+          - **File size:** ${{ steps.build.outputs.file_size }}
+          EOF
+          )"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

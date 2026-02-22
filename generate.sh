@@ -196,6 +196,7 @@ log ""
 
 # Parse summary values from Python output (stdout)
 GENERATE_OUTPUT=$(cat "$SUMMARY_FILE")
+DB_VERSION=$(echo "$GENERATE_OUTPUT" | grep "^DB_VERSION=" | cut -d= -f2-)
 OUTPUT_FILE=$(echo "$GENERATE_OUTPUT" | grep "^OUTPUT_FILE=" | cut -d= -f2-)
 AIRCRAFT_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^AIRCRAFT_COUNT=" | cut -d= -f2-)
 TYPES_COUNT=$(echo "$GENERATE_OUTPUT" | grep "^TYPES_COUNT=" | cut -d= -f2-)
@@ -215,6 +216,7 @@ log "================================================"
 log ""
 log "Generation completed successfully!"
 log ""
+log "Database version: $DB_VERSION"
 log "Output file: $OUTPUT_FILE"
 log "File size: $FILE_SIZE"
 log ""

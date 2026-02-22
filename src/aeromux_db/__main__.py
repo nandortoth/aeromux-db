@@ -242,6 +242,7 @@ def main() -> None:
 
             # Print structured summary to stdout for shell integration
             output_file_size = _format_file_size(os.path.getsize(result.path))
+            print(f"DB_VERSION={db_version}")
             print(f"OUTPUT_FILE={result.path.relative_to(PROJECT_ROOT)}")
             print(f"AIRCRAFT_COUNT={result.total_aircraft:,}")
             print(f"TYPES_COUNT={len(types):,}")

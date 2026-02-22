@@ -1,7 +1,7 @@
 # Aeromux Database Builder
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE.md)
-[![Python](https://img.shields.io/badge/Python-3.14+-3776ab)](https://www.python.org)
+[![Python](https://img.shields.io/badge/Python-3.13+-3776ab)](https://www.python.org)
 
 **A database builder for the [Aeromux](https://github.com/nandortoth/aeromux) ADS-B decoder**
 
@@ -21,7 +21,7 @@ Aeromux Database Builder generates a SQLite database from external aircraft data
 
 ### Prerequisites
 
-- **Python 3.14 or later** — [Download here](https://www.python.org/downloads/)
+- **Python 3.13 or later** — [Download here](https://www.python.org/downloads/)
 - **uv** — Fast Python package manager — [Install here](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### Build the Database
@@ -132,7 +132,21 @@ aeromux-db/
 
 ## Releases
 
-Each release of this repository represents a new version of the generated database. Releases are published as GitHub Releases with the built SQLite database attached as a release artifact. The generated database is then copied into the Aeromux repository at `artifacts/db/` for runtime use.
+Each release of this repository represents a new version of the generated database. A [GitHub Actions workflow](.github/workflows/build-database.yml) builds the database automatically every Sunday and publishes it as a GitHub Release with the SQLite file attached. Only the 10 most recent releases are kept.
+
+To check the latest version or download the database programmatically:
+
+```bash
+# Check latest version
+curl -s https://api.github.com/repos/nandortoth/aeromux-db/releases/latest | jq -r '.tag_name'
+
+# Download latest database
+curl -sL https://api.github.com/repos/nandortoth/aeromux-db/releases/latest \
+  | jq -r '.assets[0].browser_download_url' \
+  | xargs curl -sLO
+```
+
+Releases can also be triggered manually from the Actions tab with an optional release number for multiple builds in the same week.
 
 ## Contributing
 

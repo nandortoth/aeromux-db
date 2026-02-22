@@ -25,7 +25,7 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
 
 Before you begin, ensure you have the following installed:
 
-- **Python 3.14 or later** - [Download here](https://www.python.org/downloads/)
+- **Python 3.13 or later** - [Download here](https://www.python.org/downloads/)
 - **uv** - Fast Python package manager - [Install here](https://docs.astral.sh/uv/getting-started/installation/)
 - **Git** - Version control system
 - **IDE** (recommended):

@@ -238,6 +238,23 @@ The builder follows an **abort-on-failure** strategy — partial databases are n
 - In-place progress indicators are written to stderr for long-running operations (e.g. large file downloads).
 - Verbose/debug output can be enabled with `--verbose`.
 
+## CI/CD
+
+A GitHub Actions workflow ([`.github/workflows/build-database.yml`](.github/workflows/build-database.yml)) automates database builds and releases.
+
+**Schedule:** Every Sunday at 06:00 UTC. Can also be triggered manually from the Actions tab with an optional release number.
+
+**Pipeline:**
+
+1. Checks out the repository.
+2. Installs `uv` via the `astral-sh/setup-uv` action.
+3. Runs `uv run aeromux-db` and captures the KEY=VALUE summary output.
+4. Skips release creation if a release with the same version tag already exists.
+5. Creates a GitHub Release with the `.sqlite` file attached.
+6. Deletes old releases, keeping only the 10 most recent.
+
+The workflow uses `uv run` directly instead of `generate.sh` to avoid unnecessary terminal handling and venv cleanup in the CI environment. The KEY=VALUE output from `__main__.py` (written to stdout) is parsed to extract the database version, output file path, and record counts for the release.
+
 ## Further Reading
 
 - [README.md](README.md) — Quick start and usage instructions.

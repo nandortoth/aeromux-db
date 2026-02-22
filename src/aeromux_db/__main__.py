@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 from aeromux_db import __version__
-from aeromux_db.builder import build_database
+from aeromux_db.builder import PROJECT_ROOT, build_database
 from aeromux_db.cli import parse_args
 from aeromux_db.version import get_db_version
 from aeromux_db.downloader import download, extract_tarball, extract_zip, fetch_text
@@ -242,7 +242,7 @@ def main() -> None:
 
             # Print structured summary to stdout for shell integration
             output_file_size = _format_file_size(os.path.getsize(result.path))
-            print(f"OUTPUT_FILE={result.path}")
+            print(f"OUTPUT_FILE={result.path.relative_to(PROJECT_ROOT)}")
             print(f"AIRCRAFT_COUNT={result.total_aircraft:,}")
             print(f"TYPES_COUNT={len(types):,}")
             print(f"OPERATORS_COUNT={len(operators):,}")

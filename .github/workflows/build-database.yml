@@ -85,8 +85,6 @@ jobs:
 
           ## Programmatic Access
 
-          ### Bash
-
           \`\`\`bash
           # Check latest version
           curl -s ${API_URL} | jq -r '.tag_name'
@@ -96,51 +94,22 @@ jobs:
             | jq -r '.assets[0].browser_download_url' \\
             | xargs curl -sLO
           \`\`\`
-
-          ### Python
-
-          \`\`\`python
-          import httpx
-
-          API_URL = "${API_URL}"
-
-          # Check latest version
-          release = httpx.get(API_URL).json()
-          print(release["tag_name"])
-
-          # Download latest database
-          download_url = release["assets"][0]["browser_download_url"]
-          with open(release["assets"][0]["name"], "wb") as f:
-              with httpx.stream("GET", download_url, follow_redirects=True) as r:
-                  for chunk in r.iter_bytes():
-                      f.write(chunk)
-          \`\`\`
-
-          ### .NET
-
-          \`\`\`csharp
-          using System.Net.Http.Json;
-
-          var apiUrl = "${API_URL}";
-          var http = new HttpClient();
-          http.DefaultRequestHeaders.UserAgent.ParseAdd("aeromux");
-
-          // Check latest version
-          var release = await http.GetFromJsonAsync<JsonElement>(apiUrl);
-          var version = release.GetProperty("tag_name").GetString();
-          Console.WriteLine(version);
-
-          // Download latest database
-          var downloadUrl = release.GetProperty("assets")[0]
-              .GetProperty("browser_download_url").GetString();
-          var bytes = await http.GetByteArrayAsync(downloadUrl);
-          await File.WriteAllBytesAsync(Path.GetFileName(downloadUrl), bytes);
-          \`\`\`
           EOF
 
           gh release create "${VERSION}" \
             "${{ steps.build.outputs.output_file }}" \
             --title "aeromux-db ${VERSION}" \
             --notes-file release_notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean up old releases
+        run: |
+          gh release list --limit 100 --json tagName --jq '.[].tagName' \
+            | tail -n +11 \
+            | while read -r tag; do
+                echo "Deleting old release: $tag"
+                gh release delete "$tag" --yes --cleanup-tag
+              done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

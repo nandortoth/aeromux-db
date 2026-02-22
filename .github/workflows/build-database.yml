@@ -35,16 +35,14 @@ jobs:
 
           uv run aeromux-db $EXTRA_ARGS > build_summary.txt
 
-          # Parse summary values
-          DB_VERSION=$(grep "^DB_VERSION=" build_summary.txt | cut -d= -f2-)
-          OUTPUT_FILE=$(grep "^OUTPUT_FILE=" build_summary.txt | cut -d= -f2-)
-          AIRCRAFT_COUNT=$(grep "^AIRCRAFT_COUNT=" build_summary.txt | cut -d= -f2-)
-          FILE_SIZE=$(grep "^FILE_SIZE=" build_summary.txt | cut -d= -f2-)
+          # Parse all summary values
+          while IFS='=' read -r key value; do
+            echo "${key,,}=$value" >> "$GITHUB_OUTPUT"
+          done < build_summary.txt
 
-          echo "db_version=$DB_VERSION" >> "$GITHUB_OUTPUT"
-          echo "output_file=$OUTPUT_FILE" >> "$GITHUB_OUTPUT"
-          echo "aircraft_count=$AIRCRAFT_COUNT" >> "$GITHUB_OUTPUT"
-          echo "file_size=$FILE_SIZE" >> "$GITHUB_OUTPUT"
+          # Add filename for the download URL
+          OUTPUT_FILE=$(grep "^OUTPUT_FILE=" build_summary.txt | cut -d= -f2-)
+          echo "filename=$(basename "$OUTPUT_FILE")" >> "$GITHUB_OUTPUT"
 
       - name: Check for existing release
         id: check
@@ -61,13 +59,88 @@ jobs:
       - name: Create release
         if: steps.check.outputs.exists == 'false'
         run: |
-          NOTES="## Database Build
-          - **Aircraft:** ${{ steps.build.outputs.aircraft_count }}
-          - **File size:** ${{ steps.build.outputs.file_size }}"
+          REPO="${{ github.repository }}"
+          VERSION="${{ steps.build.outputs.db_version }}"
+          FILENAME="${{ steps.build.outputs.filename }}"
+          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILENAME}"
+          API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 
-          gh release create "${{ steps.build.outputs.db_version }}" \
+          cat > release_notes.md << EOF
+          ## Download
+
+          [\`${FILENAME}\`](${DOWNLOAD_URL}) (${{ steps.build.outputs.file_size }})
+
+          ## Database Records
+
+          | Category | Count |
+          |----------|------:|
+          | Aircraft | ${{ steps.build.outputs.aircraft_count }} |
+          | Types | ${{ steps.build.outputs.types_count }} |
+          | Operators | ${{ steps.build.outputs.operators_count }} |
+          | Manufacturers | ${{ steps.build.outputs.opensky_manufacturers_count }} |
+          | Aircraft details | ${{ steps.build.outputs.adsbx_details_count }} |
+          | Aircraft fallback | ${{ steps.build.outputs.adsbx_fallback_count }} |
+          | OpenSky enriched | ${{ steps.build.outputs.opensky_enrichment_count }} |
+          | Type-longnames | ${{ steps.build.outputs.typelongnames_aircraft_count }} |
+
+          ## Programmatic Access
+
+          ### Bash
+
+          \`\`\`bash
+          # Check latest version
+          curl -s ${API_URL} | jq -r '.tag_name'
+
+          # Download latest database
+          curl -sL ${API_URL} \\
+            | jq -r '.assets[0].browser_download_url' \\
+            | xargs curl -sLO
+          \`\`\`
+
+          ### Python
+
+          \`\`\`python
+          import httpx
+
+          API_URL = "${API_URL}"
+
+          # Check latest version
+          release = httpx.get(API_URL).json()
+          print(release["tag_name"])
+
+          # Download latest database
+          download_url = release["assets"][0]["browser_download_url"]
+          with open(release["assets"][0]["name"], "wb") as f:
+              with httpx.stream("GET", download_url, follow_redirects=True) as r:
+                  for chunk in r.iter_bytes():
+                      f.write(chunk)
+          \`\`\`
+
+          ### .NET
+
+          \`\`\`csharp
+          using System.Net.Http.Json;
+
+          var apiUrl = "${API_URL}";
+          var http = new HttpClient();
+          http.DefaultRequestHeaders.UserAgent.ParseAdd("aeromux");
+
+          // Check latest version
+          var release = await http.GetFromJsonAsync<JsonElement>(apiUrl);
+          var version = release.GetProperty("tag_name").GetString();
+          Console.WriteLine(version);
+
+          // Download latest database
+          var downloadUrl = release.GetProperty("assets")[0]
+              .GetProperty("browser_download_url").GetString();
+          var bytes = await http.GetByteArrayAsync(downloadUrl);
+          await File.WriteAllBytesAsync(Path.GetFileName(downloadUrl), bytes);
+          \`\`\`
+          EOF
+
+          gh release create "${VERSION}" \
             "${{ steps.build.outputs.output_file }}" \
-            --title "aeromux-db ${{ steps.build.outputs.db_version }}" \
-            --notes "$NOTES"
+            --title "aeromux-db ${VERSION}" \
+            --notes-file release_notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

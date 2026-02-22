@@ -235,7 +235,7 @@ The builder follows an **abort-on-failure** strategy — partial databases are n
 - Uses Python's built-in `logging` module. All output goes to stdout/stderr (no log files).
 - Log messages include a timestamp, log level, and a descriptive message.
 - Key milestones are logged during a normal build: start, each data source download, record counts, database write, and completion.
-- **Textual** is used for terminal UI progress bars and status messages during long-running operations.
+- In-place progress indicators are written to stderr for long-running operations (e.g. large file downloads).
 - Verbose/debug output can be enabled with `--verbose`.
 
 ## Further Reading

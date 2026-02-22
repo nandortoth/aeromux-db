@@ -7,9 +7,6 @@ __pycache__/
 artifacts/*.sqlite
 artifacts/*.csv
 
-# Research
-research/
-
 # Logs
 logs/
 

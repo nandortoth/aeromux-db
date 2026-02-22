@@ -118,6 +118,7 @@ aeromux-db/
 │       ├── version.py     # Calendar-based database version computation
 │       ├── builder.py     # SQLite database construction
 │       └── sources/
+│           ├── __init__.py
 │           ├── mictronics.py      # Mictronics data source parser
 │           ├── adsbexchange.py    # ADS-B Exchange data source parser
 │           ├── opensky.py         # OpenSky Network data source parser

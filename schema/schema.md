@@ -87,6 +87,7 @@ Build metadata key-value pairs.
 | Key | Description |
 |---|---|
 | `build_timestamp` | ISO 8601 UTC timestamp of when the database was generated. |
+| `db_version` | Calendar-based database version (e.g. `2026.1.w08_r1`). |
 | `tool_version` | Version of the db-builder tool that produced the database. |
 | `schema_version` | Database schema version for compatibility checks. |
 | `record_count` | Total number of aircraft records in the database. |

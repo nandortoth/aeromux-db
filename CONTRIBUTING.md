@@ -101,7 +101,7 @@ src/aeromux_db/
 ├── __init__.py           # Package version
 ├── __main__.py           # Entry point and pipeline orchestration
 ├── cli.py                # Command-line argument parsing
-├── downloader.py         # File download with caching and ZIP extraction
+├── downloader.py         # File download and archive extraction
 ├── models.py             # Data models (Aircraft, AircraftType, Operator)
 ├── version.py            # Calendar-based database version computation
 ├── builder.py            # SQLite database construction
@@ -189,8 +189,8 @@ This project uses **Ruff** for formatting and linting. Key rules:
 | Classes | `PascalCase` | `AircraftType`, `Operator` |
 | Functions, Methods | `snake_case` | `parse_types()`, `build_database()` |
 | Variables | `snake_case` | `icao_address`, `data_dir` |
-| Constants | `UPPER_SNAKE_CASE` | `SOURCE_URL`, `CACHE_MAX_AGE_SECONDS` |
-| Private functions | `_snake_case` | `_is_cached()`, `_format_file_size()` |
+| Constants | `UPPER_SNAKE_CASE` | `SOURCE_URL`, `SOURCE_FILENAME` |
+| Private functions | `_snake_case` | `_format_file_size()`, `_clear_progress_line()` |
 
 #### Type Annotations
 

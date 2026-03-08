@@ -2,8 +2,8 @@ name: Build Database
 
 on:
   schedule:
-    # Every Sunday at 06:00 UTC
-    - cron: "0 6 * * 0"
+    # Every Sunday at 03:15 UTC (off-peak to reduce network timeout risk)
+    - cron: "15 3 * * 0"
   workflow_dispatch:
     inputs:
       release:

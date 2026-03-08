@@ -242,7 +242,7 @@ The builder follows an **abort-on-failure** strategy — partial databases are n
 
 A GitHub Actions workflow ([`.github/workflows/build-database.yml`](.github/workflows/build-database.yml)) automates database builds and releases.
 
-**Schedule:** Every Sunday at 06:00 UTC. Can also be triggered manually from the Actions tab with an optional release number.
+**Schedule:** Every Sunday at 03:15 UTC. Can also be triggered manually from the Actions tab with an optional release number.
 
 **Pipeline:**
 

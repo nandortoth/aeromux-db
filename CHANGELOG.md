@@ -12,6 +12,10 @@ This changelog covers the **builder tool** itself, not the generated database. E
 - Unit tests for the download retry mechanism.
 - `pytest` as a dev dependency so `uv run pytest` works out of the box.
 
+### Changed
+
+- Scheduled CI build moved from Sunday 06:00 UTC to Sunday 03:15 UTC to reduce network timeout risk during off-peak hours.
+
 ## [1.0.0] — 2026-02-22
 
 Initial release of the Aeromux Database Builder.

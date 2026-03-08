@@ -39,7 +39,7 @@ class TestWithRetry:
         result = _with_retry(fn, "test")
         assert result == "ok"
         assert fn.call_count == 2
-        mock_sleep.assert_called_once_with(5)
+        mock_sleep.assert_called_once_with(60)
 
     @patch("aeromux_db.downloader.time.sleep")
     def test_retries_on_connect_error(self, mock_sleep: MagicMock) -> None:
@@ -47,7 +47,7 @@ class TestWithRetry:
         result = _with_retry(fn, "test")
         assert result == "ok"
         assert fn.call_count == 2
-        mock_sleep.assert_called_once_with(5)
+        mock_sleep.assert_called_once_with(60)
 
     @patch("aeromux_db.downloader.time.sleep")
     def test_backoff_doubles(self, mock_sleep: MagicMock) -> None:
@@ -63,9 +63,9 @@ class TestWithRetry:
         assert result == "ok"
         assert fn.call_count == 4
         assert mock_sleep.call_args_list == [
-            ((5,),),
-            ((10,),),
-            ((20,),),
+            ((60,),),
+            ((120,),),
+            ((240,),),
         ]
 
     @patch("aeromux_db.downloader.time.sleep")
@@ -105,7 +105,7 @@ class TestDownload:
         assert result.size_bytes == 5
         assert result.path == tmp_path / "file.zip"
         assert mock_stream.call_count == 2
-        mock_sleep.assert_called_once_with(5)
+        mock_sleep.assert_called_once_with(60)
 
 
 class TestFetchText:
@@ -121,4 +121,4 @@ class TestFetchText:
         result = fetch_text("https://example.com/listing.xml")
         assert result == "<xml>data</xml>"
         assert mock_get.call_count == 2
-        mock_sleep.assert_called_once_with(5)
+        mock_sleep.assert_called_once_with(60)

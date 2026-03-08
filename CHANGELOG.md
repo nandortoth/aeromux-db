@@ -8,7 +8,7 @@ This changelog covers the **builder tool** itself, not the generated database. E
 
 ### Added
 
-- Retry logic for HTTP downloads with exponential backoff (5 attempts, 5s/10s/20s/40s) to handle transient network failures in CI.
+- Retry logic for HTTP downloads with exponential backoff (5 attempts, 1m/2m/4m/8m/16m) and 10s connect timeout to handle transient network failures in CI.
 - Unit tests for the download retry mechanism.
 - `pytest` as a dev dependency so `uv run pytest` works out of the box.
 

@@ -27,7 +27,8 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _MAX_RETRIES = 5
-_INITIAL_BACKOFF = 5  # seconds
+_INITIAL_BACKOFF = 60  # seconds (backoff: 1m, 2m, 4m, 8m, 16m)
+_CONNECT_TIMEOUT = 10  # seconds
 _RETRYABLE_EXCEPTIONS = (httpx.TimeoutException, httpx.ConnectError)
 
 
@@ -51,7 +52,7 @@ def _with_retry[T](fn: Callable[[], T], description: str) -> T:
     """Execute fn() with retry on transient network errors.
 
     Retries up to _MAX_RETRIES times with doubling backoff
-    starting at _INITIAL_BACKOFF seconds (5s, 10s, 20s, 40s).
+    starting at _INITIAL_BACKOFF seconds (1m, 2m, 4m, 8m, 16m).
 
     Args:
         fn: Zero-argument callable to execute.
@@ -70,8 +71,8 @@ def _with_retry[T](fn: Callable[[], T], description: str) -> T:
                 raise
             backoff = _INITIAL_BACKOFF * (2 ** (attempt - 1))
             logger.warning(
-                "  %s failed (attempt %d/%d): %s — retrying in %ds...",
-                description, attempt, _MAX_RETRIES, exc, backoff,
+                "  %s failed (attempt %d/%d): %s — retrying in %dm...",
+                description, attempt, _MAX_RETRIES, exc, backoff // 60,
             )
             time.sleep(backoff)
 
@@ -105,7 +106,7 @@ def download(
 
     def _do_download() -> int:
         downloaded = 0
-        with httpx.stream("GET", url, follow_redirects=True) as response:
+        with httpx.stream("GET", url, follow_redirects=True, timeout=_CONNECT_TIMEOUT) as response:
             response.raise_for_status()
             total = response.headers.get("content-length")
             total_bytes = int(total) if total else None
@@ -141,7 +142,7 @@ def fetch_text(url: str) -> str:
     logger.debug("Fetching %s", url)
 
     def _do_fetch() -> str:
-        response = httpx.get(url, follow_redirects=True)
+        response = httpx.get(url, follow_redirects=True, timeout=_CONNECT_TIMEOUT)
         response.raise_for_status()
         return response.text
 

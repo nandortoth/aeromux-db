@@ -1,6 +1,6 @@
 [project]
 name = "aeromux-db"
-version = "1.0.0"
+version = "1.0.1"
 description = "Aeromux Database Builder — generates a SQLite database from external aircraft data sources."
 requires-python = ">=3.13"
 license = "GPL-3.0-or-later"
@@ -13,6 +13,9 @@ dependencies = [
 
 [project.scripts]
 aeromux-db = "aeromux_db.__main__:main"
+
+[dependency-groups]
+dev = ["pytest"]
 
 [build-system]
 requires = ["hatchling"]

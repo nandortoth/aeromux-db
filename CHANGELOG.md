@@ -4,6 +4,14 @@ All notable changes to Aeromux Database Builder are documented in this file.
 
 This changelog covers the **builder tool** itself, not the generated database. Each weekly database release has its own record counts and details on the [Releases](https://github.com/nandortoth/aeromux-db/releases) page.
 
+## [1.0.1] — 2026-03-08
+
+### Added
+
+- Retry logic for HTTP downloads with exponential backoff (5 attempts, 5s/10s/20s/40s) to handle transient network failures in CI.
+- Unit tests for the download retry mechanism.
+- `pytest` as a dev dependency so `uv run pytest` works out of the box.
+
 ## [1.0.0] — 2026-02-22
 
 Initial release of the Aeromux Database Builder.

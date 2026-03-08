@@ -16,6 +16,7 @@
 
 import logging
 import tarfile
+import time
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -24,6 +25,10 @@ from pathlib import Path
 import httpx
 
 logger = logging.getLogger(__name__)
+
+_MAX_RETRIES = 5
+_INITIAL_BACKOFF = 5  # seconds
+_RETRYABLE_EXCEPTIONS = (httpx.TimeoutException, httpx.ConnectError)
 
 
 @dataclass
@@ -40,6 +45,35 @@ class ExtractResult:
 
     path: Path
     file_count: int
+
+
+def _with_retry[T](fn: Callable[[], T], description: str) -> T:
+    """Execute fn() with retry on transient network errors.
+
+    Retries up to _MAX_RETRIES times with doubling backoff
+    starting at _INITIAL_BACKOFF seconds (5s, 10s, 20s, 40s).
+
+    Args:
+        fn: Zero-argument callable to execute.
+        description: Human-readable label for log messages.
+
+    Raises:
+        httpx.TimeoutException: After all retry attempts are exhausted.
+        httpx.ConnectError: After all retry attempts are exhausted.
+    """
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            return fn()
+        except _RETRYABLE_EXCEPTIONS as exc:
+            if attempt == _MAX_RETRIES:
+                logger.error("  %s failed after %d attempts: %s", description, _MAX_RETRIES, exc)
+                raise
+            backoff = _INITIAL_BACKOFF * (2 ** (attempt - 1))
+            logger.warning(
+                "  %s failed (attempt %d/%d): %s — retrying in %ds...",
+                description, attempt, _MAX_RETRIES, exc, backoff,
+            )
+            time.sleep(backoff)
 
 
 def download(
@@ -62,23 +96,29 @@ def download(
 
     Raises:
         httpx.HTTPStatusError: When the server returns a non-2xx response.
+        httpx.TimeoutException: After all retry attempts are exhausted.
+        httpx.ConnectError: After all retry attempts are exhausted.
     """
     dest = dest_dir / filename
 
     logger.debug("Downloading %s", url)
 
-    with httpx.stream("GET", url, follow_redirects=True) as response:
-        response.raise_for_status()
-        total = response.headers.get("content-length")
-        total_bytes = int(total) if total else None
+    def _do_download() -> int:
         downloaded = 0
+        with httpx.stream("GET", url, follow_redirects=True) as response:
+            response.raise_for_status()
+            total = response.headers.get("content-length")
+            total_bytes = int(total) if total else None
 
-        with open(dest, "wb") as f:
-            for chunk in response.iter_bytes(chunk_size=8192):
-                f.write(chunk)
-                downloaded += len(chunk)
-                if progress_callback:
-                    progress_callback(downloaded, total_bytes)
+            with open(dest, "wb") as f:
+                for chunk in response.iter_bytes(chunk_size=8192):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if progress_callback:
+                        progress_callback(downloaded, total_bytes)
+        return downloaded
+
+    downloaded = _with_retry(_do_download, f"Download {filename}")
 
     logger.debug("Downloaded %s (%d bytes)", filename, downloaded)
     return DownloadResult(path=dest, size_bytes=downloaded)
@@ -95,11 +135,17 @@ def fetch_text(url: str) -> str:
 
     Raises:
         httpx.HTTPStatusError: When the server returns a non-2xx response.
+        httpx.TimeoutException: After all retry attempts are exhausted.
+        httpx.ConnectError: After all retry attempts are exhausted.
     """
     logger.debug("Fetching %s", url)
-    response = httpx.get(url, follow_redirects=True)
-    response.raise_for_status()
-    return response.text
+
+    def _do_fetch() -> str:
+        response = httpx.get(url, follow_redirects=True)
+        response.raise_for_status()
+        return response.text
+
+    return _with_retry(_do_fetch, f"Fetch {url}")
 
 
 def extract_zip(zip_path: Path, dest_dir: Path | None = None) -> ExtractResult:

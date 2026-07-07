@@ -70,7 +70,7 @@ source is a plain download — fetch the rows for an ICAO hex directly:
 
 ```bash
 # Mictronics (uppercase hex keys)
-curl -sL https://www.mictronics.de/aircraft-database/indexedDB.php -o mic.zip && unzip -p mic.zip aircrafts.json | grep -oiE '"4D2145":\[[^]]*\]'
+curl -sL https://raw.githubusercontent.com/Mictronics/aircraft-database/main/indexedDB.zip -o mic.zip && unzip -p mic.zip aircrafts.json | grep -oiE '"4D2145":\[[^]]*\]'
 # ADS-B Exchange (lowercase icao, JSON lines)
 curl -sL http://downloads.adsbexchange.com/downloads/basic-ac-db.json.gz | zcat | grep -i '"icao":"4d2145"'
 # OpenSky monthly CSV (302 -> S3; quotechar is a single quote)

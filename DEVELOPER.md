@@ -29,7 +29,7 @@ The technical constraint on tar1090-db is only that it run **after Mictronics (s
 
 ### 1. Mictronics Aircraft Database
 
-- **URL:** `https://www.mictronics.de/aircraft-database/indexedDB.php`
+- **URL:** `https://raw.githubusercontent.com/Mictronics/aircraft-database/main/indexedDB.zip`
 - **Format:** ZIP archive containing four JSON files.
 
 **`aircrafts.json`** — Aircraft records as a JSON object keyed by ICAO 24-bit address.

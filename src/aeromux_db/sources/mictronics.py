@@ -22,7 +22,7 @@ from aeromux_db.models import Aircraft, AircraftType, Operator
 
 logger = logging.getLogger(__name__)
 
-SOURCE_URL = "https://www.mictronics.de/aircraft-database/indexedDB.php"
+SOURCE_URL = "https://raw.githubusercontent.com/Mictronics/aircraft-database/main/indexedDB.zip"
 SOURCE_FILENAME = "mictronics.zip"
 
 

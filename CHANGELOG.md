@@ -4,6 +4,12 @@ All notable changes to Aeromux Database Builder are documented in this file.
 
 This changelog covers the **builder tool** itself, not the generated database. Each weekly database release has its own record counts and details on the [Releases](https://github.com/aeromux/aeromux-db/releases) page.
 
+## [1.4.1] — 2026-07-07
+
+### Fixed
+
+- Mictronics database download now points at the source's new GitHub location (`raw.githubusercontent.com/Mictronics/aircraft-database/main/indexedDB.zip`). The former `mictronics.de/aircraft-database/indexedDB.php` endpoint was removed and returned `404`, failing every build at step 1. The archive contents are unchanged, so no parsing changes were needed.
+
 ## [1.4.0] — 2026-06-27
 
 ### Changed

@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Aeromux Database Builder — weekly build & release timer.
+# Install to /etc/systemd/system/aeromux-db.timer, then (as root):
+#   systemctl daemon-reload && systemctl enable --now aeromux-db.timer
+#
+# Single run per week, Monday 03:00 UTC. Persistent=true runs a missed job on the next
+# boot. Scheduled in UTC to match the UTC-based db_version derivation. Change the
+# OnCalendar line for a different time or timezone.
+
+[Unit]
+Description=Weekly aeromux-db build & release
+
+[Timer]
+OnCalendar=Mon *-*-* 03:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

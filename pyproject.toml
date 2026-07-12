@@ -1,6 +1,6 @@
 [project]
 name = "aeromux-db"
-version = "1.4.1"
+version = "1.5.0"
 description = "Aeromux Database Builder — generates a SQLite database from external aircraft data sources."
 requires-python = ">=3.13"
 license = "GPL-3.0-or-later"

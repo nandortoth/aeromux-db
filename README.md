@@ -136,7 +136,7 @@ aeromux-db/
 
 ## Releases
 
-Each release of this repository represents a new version of the generated database. A [GitHub Actions workflow](.github/workflows/build-database.yml) builds the database automatically every weekend (Saturday and Sunday at 03:15 UTC); the second run of the weekend skips early if the first already produced a release for the same ISO week. The database is published as a GitHub Release with the SQLite file attached. Only the 10 most recent releases are kept.
+Each release of this repository represents a new version of the generated database. The database is built weekly (Monday at 03:00 UTC) by a self-hosted [`systemd` timer](scripts/README.md) and published as a GitHub Release with the SQLite file attached. Only the 10 most recent releases are kept.
 
 To check the latest version or download the database programmatically:
 
@@ -150,7 +150,7 @@ curl -sL https://api.github.com/repos/aeromux/aeromux-db/releases/latest \
   | xargs curl -sLO
 ```
 
-Releases can also be triggered manually from the Actions tab with an optional release number for multiple builds in the same week.
+A run can also be triggered on the build host as root (`systemctl start aeromux-db.service`), with an optional release number for multiple builds in the same week. See [`scripts/README.md`](scripts/README.md) for how the self-hosted build is installed and operated.
 
 ## Contributing
 

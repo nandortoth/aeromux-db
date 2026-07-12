@@ -4,6 +4,20 @@ All notable changes to Aeromux Database Builder are documented in this file.
 
 This changelog covers the **builder tool** itself, not the generated database. Each weekly database release has its own record counts and details on the [Releases](https://github.com/aeromux/aeromux-db/releases) page.
 
+## [1.5.0] — 2026-07-12
+
+### Changed
+
+- The weekly database build and release now runs on a self-hosted `systemd` timer (a Debian VM) instead of GitHub Actions. Scheduled builds on GitHub-hosted runners intermittently failed while downloading source data — outbound connections from the runner IP ranges timed out for some sources — which a self-hosted host with an ordinary egress IP avoids. Release output is unchanged for consumers.
+
+### Added
+
+- `scripts/` — `build-and-release.sh` plus systemd service/timer units, env-file templates, and install/operate docs (`scripts/README.md`) for the self-hosted build.
+
+### Removed
+
+- `.github/workflows/build-database.yml` — superseded by the self-hosted build.
+
 ## [1.4.1] — 2026-07-07
 
 ### Fixed

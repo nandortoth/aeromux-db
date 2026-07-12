@@ -312,23 +312,31 @@ The builder follows an **abort-on-failure** strategy — partial databases are n
 - In-place progress indicators are written to stderr for long-running operations (e.g. large file downloads).
 - Verbose/debug output can be enabled with `--verbose`.
 
-## CI/CD
+## Build & Release
 
-A GitHub Actions workflow ([`.github/workflows/build-database.yml`](.github/workflows/build-database.yml)) automates database builds and releases.
+The weekly database build and release runs on a **self-hosted `systemd` timer** (a
+home Debian VM), not GitHub Actions. Scheduled builds on GitHub-hosted runners
+intermittently failed while downloading source data — outbound connections from the
+runner IP ranges timed out for some sources — which a self-hosted host with an ordinary
+egress IP avoids. Full install/operate docs live in [`scripts/README.md`](scripts/README.md).
 
-**Schedule:** Saturday and Sunday at 03:15 UTC. Two runs per weekend mitigate intermittent runner network failures ([`actions/runner-images#4700`](https://github.com/actions/runner-images/issues/4700)); the second run short-circuits early if the first already published a release for the same ISO week. Can also be triggered manually from the Actions tab with an optional release number.
+**Schedule:** Monday 03:00 UTC (`Persistent=true`, so a missed run fires on next boot).
+A run can also be triggered manually on the host, as root, with
+`systemctl start aeromux-db.service`.
 
-**Pipeline:**
+**Pipeline** (`scripts/build-and-release.sh`):
 
-1. Checks out the repository.
-2. Installs `uv` via the `astral-sh/setup-uv` action.
-3. Resolves the target `db_version` via `uv run aeromux-db --print-version`.
-4. Skips the rest of the pipeline if a GitHub Release with that version tag already exists.
-5. Runs `uv run aeromux-db` and captures the KEY=VALUE summary output.
-6. Creates a GitHub Release with the `.sqlite` file attached.
-7. Deletes old releases, keeping only the 10 most recent.
+1. Updates the checkout to `origin/main`.
+2. Resolves the target `db_version` via `uv run aeromux-db --print-version`.
+3. Skips if a GitHub Release with that version tag already exists.
+4. Runs `uv run aeromux-db` and captures the KEY=VALUE summary output.
+5. Creates a GitHub Release (via `gh`) with the `.sqlite` file attached.
+6. Deletes old releases, keeping only the 10 most recent.
 
-The workflow uses `uv run` directly instead of `generate.sh` to avoid unnecessary terminal handling and venv cleanup in the CI environment. The KEY=VALUE output from `__main__.py` (written to stdout) is parsed to extract the database version, output file path, and record counts for the release.
+The KEY=VALUE output from `__main__.py` (written to stdout) is parsed to extract the
+database version, output file path, and record counts for the release. The only
+credential is a fine-grained GitHub token supplied via a `systemd` `EnvironmentFile`;
+all six data sources are public.
 
 ## Further Reading
 

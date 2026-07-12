@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Aeromux Database Builder — build & release service (oneshot).
+# Install to /etc/systemd/system/aeromux-db.service (copy, do not symlink from the
+# checkout — the checkout is writable by the service account, and a unit on a
+# non-root-writable path is a privilege-escalation vector). See scripts/README.md.
+
+[Unit]
+Description=Build and publish the aeromux-db database release
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=aeromux-db
+Group=aeromux-db
+
+# credentials.env is required (GH_TOKEN, HEALTHCHECKS_URL); the leading '-' on
+# config.env makes it optional (KEEP/RELEASE/GH_REPO fall back to script defaults).
+# NOTE: systemd does not support trailing/inline comments on directive lines.
+EnvironmentFile=/etc/aeromux-db/credentials.env
+EnvironmentFile=-/etc/aeromux-db/config.env
+
+WorkingDirectory=/opt/aeromux-db
+ExecStart=/opt/aeromux-db/scripts/build-and-release.sh
+TimeoutStartSec=45min
+
+# systemd sets HOME/USER/LOGNAME from the account database, but a oneshot does NOT
+# source the login profile. uv installs to ~/.local/bin, which is not on the default
+# unit PATH — add it explicitly or ExecStart fails with "uv: not found".
+Environment=PATH=/opt/aeromux-db/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+# Resource caps (assume 4 GB / 2 vCPU). MemoryHigh is a soft throttle (reclaim
+# pressure, no kill); MemoryMax is a generous hard ceiling. Calibrate to the real
+# peak: run once, read `systemctl show -p MemoryPeak aeromux-db.service`, then set
+# MemoryMax ~20% above it.
+MemoryHigh=3G
+MemoryMax=3500M
+CPUQuota=180%
+TasksMax=2048
+
+# Sandboxing (containment for the build process).
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/aeromux-db
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+RestrictSUIDSGID=true
+# AF_NETLINK is required: glibc getaddrinfo() enumerates interfaces over NETLINK, so
+# DNS resolution (hence every download) breaks without it. AF_UNIX covers nss/nscd.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK

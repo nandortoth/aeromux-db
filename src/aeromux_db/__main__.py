@@ -179,13 +179,13 @@ def main() -> None:
             # Step 5: Parse ADS-B Exchange
             logger.info("Step 5/16: Parsing ADS-B Exchange data...")
             logger.info("  Parsing aircraft...")
-            adsbx_aircraft = adsbx_parse_aircraft(adsbx_result.path)
+            adsbx_aircraft, adsbx_malformed = adsbx_parse_aircraft(adsbx_result.path)
             logger.info("  Parsed %s aircraft", f"{len(adsbx_aircraft):,}")
             logger.info("  Parsing aircraft details...")
-            adsbx_details = adsbx_parse_aircraft_details(adsbx_result.path)
+            adsbx_details, _ = adsbx_parse_aircraft_details(adsbx_result.path)
             logger.info("  Parsed %s aircraft details", f"{len(adsbx_details):,}")
             logger.info("  Parsing aircraft fallback data...")
-            adsbx_fallback = adsbx_parse_aircraft_fallbackdata(adsbx_result.path)
+            adsbx_fallback, _ = adsbx_parse_aircraft_fallbackdata(adsbx_result.path)
             logger.info("  Parsed %s aircraft fallback records", f"{len(adsbx_fallback):,}")
 
             # Step 6: Download OpenSky Network
@@ -296,6 +296,7 @@ def main() -> None:
             print(f"ADSBX_AIRCRAFT_COUNT={len(adsbx_aircraft):,}")
             print(f"ADSBX_DETAILS_COUNT={len(adsbx_details):,}")
             print(f"ADSBX_FALLBACK_COUNT={len(adsbx_fallback):,}")
+            print(f"ADSBX_MALFORMED_COUNT={adsbx_malformed:,}")
             print(f"OPENSKY_MANUFACTURERS_COUNT={len(opensky_manufacturers):,}")
             print(f"OPENSKY_ENRICHMENT_COUNT={len(opensky_enrichment):,}")
             print(f"PLANEALERTDB_AIRCRAFT_COUNT={len(planealertdb_aircraft):,}")

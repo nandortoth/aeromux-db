@@ -4,6 +4,19 @@ All notable changes to Aeromux Database Builder are documented in this file.
 
 This changelog covers the **builder tool** itself, not the generated database. Each weekly database release has its own record counts and details on the [Releases](https://github.com/aeromux/aeromux-db/releases) page.
 
+## [1.5.1] — 2026-08-14
+
+### Fixed
+
+- A single unreadable record in the ADS-B Exchange dump no longer fails the build. Records with broken string escaping — an over-escaped quote inside a text field ends the JSON string early, making the line invalid — or without a usable `icao` are now skipped and counted. The parse still fails if the file holds no records or more than 0.1% are unreadable, so a format change is not absorbed silently.
+- Per-type Wake Turbulence Categories from tar1090-db are populated again. The upstream types file was renamed and is now gzip-compressed despite its `.js` extension; the parser looked only for the old filename and treated its absence as an empty result, leaving `type_wtc` empty without failing the build. Both filenames are now accepted, and gzip is detected by content rather than by extension.
+- `scripts/build-and-release.sh` no longer reports success after a failed build. The `set +e` in `main()` (needed to read `PIPESTATUS`) is shell-wide rather than function-scoped, so failures inside `run()` were ignored: publishing continued with an empty summary, and the run finished with exit `0` and a success ping. `run()` now re-arms `errexit` in its own subshell.
+
+### Added
+
+- `ADSBX_MALFORMED_COUNT` in the build summary — ADS-B Exchange records skipped as unreadable, zero on a healthy build.
+- `scripts/build-and-release.sh` validates the build summary before publishing: every key present, every count non-zero, the aircraft count at or above `MIN_AIRCRAFT` (default 500,000), and `DB_VERSION` equal to the release tag. A build can exit `0` having produced an unusable database — a source returning an empty file, say — which `errexit` cannot catch. `KEEP`/`RELEASE`/`MIN_AIRCRAFT` are also checked to be numeric, since a systemd `EnvironmentFile` does not strip trailing comments.
+
 ## [1.5.0] — 2026-07-12
 
 ### Changed

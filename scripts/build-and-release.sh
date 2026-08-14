@@ -33,6 +33,26 @@ PULL=true                   # --no-pull disables the self-update
 LOG_FILE="$(mktemp -t aeromux-db-run.XXXXXX.log)"
 SUMMARY_FILE=""
 
+# Sanity floor for the aircraft count, a catastrophe guard rather than a quality
+# gate: a healthy build is well above it (627,181 in 2026.3.w32_r1). A build that
+# exits 0 having lost a whole source lands far below.
+MIN_AIRCRAFT="${MIN_AIRCRAFT:-500000}"
+
+# The shape of a db_version (see src/aeromux_db/version.py), e.g. 2026.3.w33_r1.
+VERSION_RE='^[0-9]{4}\.[1-4]\.w[0-9]{2}_r[0-9]+$'
+
+# Every key the builder prints as its stdout summary. All must be present and
+# non-empty; the *_COUNT keys must also be non-zero — a source that quietly
+# returns nothing is a broken build, not a quiet week. ADSBX_MALFORMED_COUNT is
+# the exception: zero is its healthy value.
+SUMMARY_KEYS=(
+    DB_VERSION OUTPUT_FILE FILE_SIZE
+    AIRCRAFT_COUNT TYPES_COUNT TYPES_WTC_COUNT OPERATORS_COUNT
+    ADSBX_AIRCRAFT_COUNT ADSBX_DETAILS_COUNT ADSBX_FALLBACK_COUNT ADSBX_MALFORMED_COUNT
+    OPENSKY_MANUFACTURERS_COUNT OPENSKY_ENRICHMENT_COUNT
+    PLANEALERTDB_AIRCRAFT_COUNT TYPELONGNAMES_AIRCRAFT_COUNT
+)
+
 log() { printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 die() { log "ERROR: $*" >&2; exit 1; }
 
@@ -63,7 +83,8 @@ usage() {
         '  --keep N      Releases to retain when pruning (default: 10)' \
         '  --no-pull     Skip updating the checkout to origin/main (local testing)' \
         '' \
-        'Environment: GH_TOKEN (required), HEALTHCHECKS_URL, KEEP, RELEASE, GH_REPO.'
+        'Environment: GH_TOKEN (required), HEALTHCHECKS_URL, KEEP, RELEASE, GH_REPO,' \
+        '             MIN_AIRCRAFT.'
 }
 
 parse_args() {
@@ -76,6 +97,14 @@ parse_args() {
             *) die "Unknown option: $1 (try --help)" ;;
         esac
     done
+
+    # KEEP/RELEASE also arrive from the systemd EnvironmentFile, where an inline
+    # comment is not stripped (`KEEP=10  # note` sets KEEP to `10  # note`). Catch
+    # that here rather than as an arithmetic error deep in the run.
+    is_number "$KEEP" || die "--keep/KEEP must be a whole number (got '${KEEP}')"
+    is_number "$MIN_AIRCRAFT" || die "MIN_AIRCRAFT must be a whole number (got '${MIN_AIRCRAFT}')"
+    [ -z "$RELEASE" ] || is_number "$RELEASE" \
+        || die "--release/RELEASE must be a whole number (got '${RELEASE}')"
 }
 
 # --- Helpers ----------------------------------------------------------------
@@ -89,6 +118,46 @@ uvrun() {
 }
 
 summary() { grep "^$1=" "$SUMMARY_FILE" | cut -d= -f2-; }
+
+# The builder prints counts with thousands separators (627,181).
+summary_count() { local raw; raw="$(summary "$1")"; printf '%s' "${raw//,/}"; }
+
+is_number() { [[ "$1" =~ ^[0-9]+$ ]]; }
+
+# Gate between building and publishing. The build exiting 0 does not mean the
+# database is usable: a source can return an empty file and still merge cleanly.
+# errexit cannot catch that, and it cannot catch a missing summary key either —
+# the counts are interpolated into the release notes as command substitutions in
+# arguments, which never trip errexit and would silently render as empty cells.
+validate_summary() {
+    local expected_version="$1" key value count
+    for key in "${SUMMARY_KEYS[@]}"; do
+        value="$(summary "$key")" || die "Build summary is missing ${key}"
+        [ -n "$value" ] || die "Build summary has an empty ${key}"
+        case "$key" in
+            *_COUNT)
+                count="${value//,/}"
+                is_number "$count" || die "Build summary has a non-numeric ${key}: '${value}'"
+                if [ "$key" != ADSBX_MALFORMED_COUNT ] && [ "$count" -eq 0 ]; then
+                    die "Build summary reports ${key}=0; refusing to publish"
+                fi
+                ;;
+        esac
+    done
+
+    count="$(summary_count AIRCRAFT_COUNT)"
+    [ "$count" -ge "$MIN_AIRCRAFT" ] \
+        || die "Aircraft count ${count} is below the ${MIN_AIRCRAFT} floor; refusing to publish"
+
+    # The version is resolved by its own `aeromux-db` run, so a build that crosses a
+    # UTC week boundary would otherwise tag a database that names a different week.
+    value="$(summary DB_VERSION)"
+    [ "$value" = "$expected_version" ] \
+        || die "Built database is version ${value}, expected ${expected_version}"
+
+    count="$(summary_count ADSBX_MALFORMED_COUNT)"
+    [ "$count" -eq 0 ] || log "NOTE: ${count} unreadable ADS-B Exchange record(s) were skipped"
+}
 
 # --- Pipeline steps ---------------------------------------------------------
 update_repo() {
@@ -104,9 +173,13 @@ update_repo() {
 resolve_version() { uvrun --print-version; }
 
 create_release() {
-    local version="$1" repo output_file filename fsize notes dl api
+    # Declare first, assign on their own lines: `local x="$(cmd)"` would mask the
+    # command's exit status behind `local`'s, so a failure would go unnoticed.
+    local version="$1" repo output_file asset filename fsize notes dl api
     repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
     output_file="$(summary OUTPUT_FILE)"          # relative to PROJECT_ROOT
+    asset="${PROJECT_ROOT}/${output_file}"
+    [ -f "$asset" ] && [ -s "$asset" ] || die "Build artifact is missing or empty: ${asset}"
     filename="$(basename "$output_file")"
     fsize="$(summary FILE_SIZE)"
     notes="$(mktemp -t aeromux-db-notes.XXXXXX.md)"
@@ -142,7 +215,7 @@ create_release() {
         > "$notes"
 
     log "Creating release ${version}..."
-    gh release create "$version" "${PROJECT_ROOT}/${output_file}" \
+    gh release create "$version" "$asset" \
         --title "aeromux-db ${version}" --notes-file "$notes"
     rm -f "$notes"
 }
@@ -159,10 +232,18 @@ prune_releases() {
 
 # The pipeline. Its combined output is tee'd to $LOG_FILE by main().
 run() {
+    # main() lifts errexit to read PIPESTATUS, and `set +e` is shell-wide rather
+    # than function-scoped — without re-arming it here every failure below would be
+    # ignored and the run would finish on `log "Done"`, i.e. report success and ping
+    # healthchecks green after publishing nothing. This is the left side of a
+    # pipeline, so it runs in a subshell and the setting does not leak back.
+    set -e
+
     update_repo
 
     local version
-    version="$(resolve_version)"
+    version="$(resolve_version)" || die "Could not resolve the target version"
+    [[ "$version" =~ $VERSION_RE ]] || die "Resolved an implausible version: '${version}'"
     log "Target version: ${version}"
 
     if gh release view "$version" >/dev/null 2>&1; then
@@ -171,9 +252,14 @@ run() {
     fi
 
     log "Building database..."
-    uvrun > "$SUMMARY_FILE"           # stdout = KEY=VALUE summary; stderr -> log
+    # stdout = KEY=VALUE summary; stderr -> log
+    uvrun > "$SUMMARY_FILE" \
+        || die "Build failed; no release created (see the traceback above)"
+    validate_summary "$version"
 
     create_release "$version"
+    # Logged before pruning, so a prune failure cannot hide that the release is out
+    log "Release ${version} published"
     prune_releases
     log "Done: published ${version}"
 }

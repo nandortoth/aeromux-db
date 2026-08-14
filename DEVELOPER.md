@@ -69,6 +69,16 @@ Each value is an array: `[operator_name, operator_country, operator_callsign]`.
 | `short_type` | ICAO aircraft class (e.g. `L2J`). |
 | `mil` | Military aircraft flag. |
 
+**Unreadable records are skipped.** Individual records occasionally cannot be read —
+an over-escaped quote inside a text field ends the JSON string early and makes the
+line invalid, or `icao` is missing. Those records are counted and skipped rather than
+failing the build over one record in hundreds of thousands. Two limits keep that from
+hiding a real problem: the parse fails if the file holds no records at all, or if more
+than `MAX_MALFORMED_RATIO` (0.1%) of them are unreadable — that is a format change,
+not a data quirk. All three parse passes filter identically, so a skipped aircraft
+leaves no orphaned `aircraft_details` or `aircraft_fallbackdata` row. The count is
+reported as `ADSBX_MALFORMED_COUNT` in the build summary.
+
 **Populates:** `aircrafts` (new records), `aircraft_details` (all records from this source), `aircraft_fallbackdata` (manufacturer field).
 
 ### 3. OpenSky Network Aircraft Database
@@ -153,7 +163,7 @@ The type descriptions are unique per aircraft, not per type code — the same ty
 ### 6. tar1090-db (wiedehopf)
 
 - **URL:** `https://github.com/wiedehopf/tar1090-db/archive/refs/heads/master.tar.gz`
-- **Format:** Tarball containing a single `icao_aircraft_types.json` file at the repo root. JSON shape is a flat object keyed by ICAO type designator:
+- **Format:** Tarball containing the ICAO aircraft types file. That file has had two names upstream — `icao_aircraft_types.json` at the repo root, and `db/icao_aircraft_types.js`, the same JSON but **gzip-compressed despite the `.js` name** — so the parser accepts either and decompresses when the file starts with the gzip magic bytes. The sibling `db/icao_aircraft_types2.js` carries the same types in a different shape (`[name, desc, wtc]` arrays) and is deliberately not used. JSON shape is a flat object keyed by ICAO type designator:
 
   ```json
   {"A388": {"desc": "L4J", "wtc": "J"}, ...}

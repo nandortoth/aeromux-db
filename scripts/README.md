@@ -138,7 +138,8 @@ Two files under `/etc/aeromux-db/`:
   (a capability URL; treat as secret).
 - **`config.env`** (`0644`) — `KEEP` (releases to retain, default 10), `RELEASE`
   (release number within the ISO week), `GH_REPO` (publish target; defaults to the
-  checkout's origin remote).
+  checkout's origin remote), `MIN_AIRCRAFT` (aircraft-count floor below which the
+  build is not published, default 500000).
 
 > **Both are systemd `EnvironmentFile`s: use full-line comments only.** systemd does
 > not strip trailing/inline comments, so `KEEP=10  # note` sets `KEEP` to
@@ -165,6 +166,8 @@ Run these as root (or with `sudo` if you installed it).
 | Situation | Action |
 |---|---|
 | Transient upstream failure | Re-run the service; it skips if the release already exists. |
+| Build failed (red check) | Read `journalctl -u aeromux-db.service`; no release is created, so re-run after fixing. |
+| "refusing to publish" | A sanity check rejected the build (empty count, aircraft below `MIN_AIRCRAFT`, version mismatch). The database is wrong, not the check — investigate the source data before overriding. |
 | Missed run (VM was down) | `Persistent=true` runs it on next boot, or trigger manually. |
 | Token expired/revoked | Update `GH_TOKEN` in `credentials.env`; re-run the service. |
 | Disk full | `runuser -u aeromux-db -- rm -rf /opt/aeromux-db/.cache/uv` |

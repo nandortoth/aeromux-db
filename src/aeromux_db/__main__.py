@@ -293,6 +293,7 @@ def main() -> None:
             print(f"TYPES_COUNT={len(types):,}")
             print(f"TYPES_WTC_COUNT={types_wtc_count:,}")
             print(f"OPERATORS_COUNT={len(operators):,}")
+            print(f"MICTRONICS_AIRCRAFT_COUNT={len(aircraft):,}")
             print(f"ADSBX_AIRCRAFT_COUNT={len(adsbx_aircraft):,}")
             print(f"ADSBX_DETAILS_COUNT={len(adsbx_details):,}")
             print(f"ADSBX_FALLBACK_COUNT={len(adsbx_fallback):,}")

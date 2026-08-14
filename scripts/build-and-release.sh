@@ -47,7 +47,7 @@ VERSION_RE='^[0-9]{4}\.[1-4]\.w[0-9]{2}_r[0-9]+$'
 # the exception: zero is its healthy value.
 SUMMARY_KEYS=(
     DB_VERSION OUTPUT_FILE FILE_SIZE
-    AIRCRAFT_COUNT TYPES_COUNT TYPES_WTC_COUNT OPERATORS_COUNT
+    AIRCRAFT_COUNT TYPES_COUNT TYPES_WTC_COUNT OPERATORS_COUNT MICTRONICS_AIRCRAFT_COUNT
     ADSBX_AIRCRAFT_COUNT ADSBX_DETAILS_COUNT ADSBX_FALLBACK_COUNT ADSBX_MALFORMED_COUNT
     OPENSKY_MANUFACTURERS_COUNT OPENSKY_ENRICHMENT_COUNT
     PLANEALERTDB_AIRCRAFT_COUNT TYPELONGNAMES_AIRCRAFT_COUNT
@@ -130,7 +130,7 @@ is_number() { [[ "$1" =~ ^[0-9]+$ ]]; }
 # the counts are interpolated into the release notes as command substitutions in
 # arguments, which never trip errexit and would silently render as empty cells.
 validate_summary() {
-    local expected_version="$1" key value count
+    local expected_version="$1" key value count aircraft mictronics wtc malformed
     for key in "${SUMMARY_KEYS[@]}"; do
         value="$(summary "$key")" || die "Build summary is missing ${key}"
         [ -n "$value" ] || die "Build summary has an empty ${key}"
@@ -155,8 +155,13 @@ validate_summary() {
     [ "$value" = "$expected_version" ] \
         || die "Built database is version ${value}, expected ${expected_version}"
 
-    count="$(summary_count ADSBX_MALFORMED_COUNT)"
-    [ "$count" -eq 0 ] || log "NOTE: ${count} unreadable ADS-B Exchange record(s) were skipped"
+    # Logged unconditionally: a gate that stays silent on success leaves no evidence in
+    # the journal that it ran at all, and no record of what it accepted.
+    aircraft="$(summary AIRCRAFT_COUNT)"
+    mictronics="$(summary MICTRONICS_AIRCRAFT_COUNT)"
+    wtc="$(summary TYPES_WTC_COUNT)"
+    malformed="$(summary ADSBX_MALFORMED_COUNT)"
+    log "Summary validated: ${aircraft} aircraft (${mictronics} Mictronics), ${wtc} types with WTC, ${malformed} unreadable record(s) skipped"
 }
 
 # --- Pipeline steps ---------------------------------------------------------

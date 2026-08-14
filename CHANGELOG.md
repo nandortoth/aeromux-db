@@ -14,8 +14,8 @@ This changelog covers the **builder tool** itself, not the generated database. E
 
 ### Added
 
-- `ADSBX_MALFORMED_COUNT` in the build summary — ADS-B Exchange records skipped as unreadable, zero on a healthy build.
-- `scripts/build-and-release.sh` validates the build summary before publishing: every key present, every count non-zero, the aircraft count at or above `MIN_AIRCRAFT` (default 500,000), and `DB_VERSION` equal to the release tag. A build can exit `0` having produced an unusable database — a source returning an empty file, say — which `errexit` cannot catch. `KEEP`/`RELEASE`/`MIN_AIRCRAFT` are also checked to be numeric, since a systemd `EnvironmentFile` does not strip trailing comments.
+- `MICTRONICS_AIRCRAFT_COUNT` and `ADSBX_MALFORMED_COUNT` in the build summary — the Mictronics contribution to the merged database, and the ADS-B Exchange records skipped as unreadable (zero on a healthy build). The union of the sources moves independently of any single source's size, so a per-source count is what separates a coverage change from a failing source.
+- `scripts/build-and-release.sh` validates the build summary before publishing: every key present, every count non-zero, the aircraft count at or above `MIN_AIRCRAFT` (default 500,000), and `DB_VERSION` equal to the release tag. A build can exit `0` having produced an unusable database — a source returning an empty file, say — which `errexit` cannot catch. `KEEP`/`RELEASE`/`MIN_AIRCRAFT` are also checked to be numeric, since a systemd `EnvironmentFile` does not strip trailing comments. The accepted counts are logged as a `Summary validated: ...` line, so a successful run leaves evidence of what passed.
 
 ## [1.5.0] — 2026-07-12
 
